@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="1000"
+   height="1000"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="viewpoint.svg">
+  <defs
+     id="defs17" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1086"
+     inkscape:window-height="745"
+     id="namedview15"
+     showgrid="true"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     inkscape:zoom="0.22425739"
+     inkscape:cx="-399.39274"
+     inkscape:cy="410.74749"
+     inkscape:window-x="0"
+     inkscape:window-y="24"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg2">
+    <sodipodi:guide
+       position="500,1100"
+       orientation="1,0"
+       id="guide3347" />
+    <sodipodi:guide
+       position="-220.71725,1300.6552"
+       orientation="1,0"
+       id="guide3349" />
+    <inkscape:grid
+       type="xygrid"
+       id="grid3351"
+       spacingx="100"
+       spacingy="100" />
+    <sodipodi:guide
+       position="100,500"
+       orientation="0,1"
+       id="guide3353" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata12390">image/svg+xmlOther map symbolsMohamed IbrahimPublic Domainclker.comother map symbols<rdf:RDF>
+  <cc:Work
+     rdf:about="">
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type
+       rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+    <dc:title></dc:title>
+  </cc:Work>
+</rdf:RDF>
+</metadata>
+  <g
+     id="g5"
+     transform="translate(296.87835,132.31846)">
+    <title
+       id="title7">Layer 1</title>
+    <path
+       id="path2534"
+       d="m 259.32651,368.75964 c 0,30.47425 -24.80603,55.34122 -55.40216,55.34122 -30.53519,0 -55.34122,-24.86697 -55.34122,-55.34122 0,-30.59613 24.80603,-55.40216 55.34122,-55.40216 30.59613,0 55.40216,24.80603 55.40216,55.40216"
+       inkscape:connector-curvature="0"
+       style="fill:#231f20;fill-rule:nonzero" />
+    <path
+       id="path2536"
+       d="m 295.52991,351.99881 0,33.46072 280.9115,20.78345 0,-75.02759 -280.9115,20.78342 z"
+       inkscape:connector-curvature="0"
+       style="fill:#231f20;fill-rule:nonzero" />
+    <path
+       id="path2538"
+       d="M 235.37375,281.11575 264.26334,297.87659 378.90741,141.11711 314.05823,103.6338 235.37375,281.11575 Z"
+       inkscape:connector-curvature="0"
+       style="fill:#231f20;fill-rule:nonzero" />
+    <path
+       id="path2540"
+       d="m 274.99027,308.54257 16.69988,29.01148 208.07807,-96.4205 -37.54425,-64.97107 -187.2337,132.38009 z"
+       inkscape:connector-curvature="0"
+       style="fill:#231f20;fill-rule:nonzero" />
+    <path
+       id="path2542"
+       d="m 235.37375,456.34262 28.88959,-16.76083 114.64407,156.75946 -64.84918,37.48333 -78.68448,-177.48196 z"
+       inkscape:connector-curvature="0"
+       style="fill:#231f20;fill-rule:nonzero" />
+    <path
+       id="path2544"
+       d="m 274.99027,428.9158 16.69988,-29.01147 208.07807,96.42047 -37.54425,64.9711 -187.2337,-132.3801 z"
+       inkscape:connector-curvature="0"
+       style="fill:#231f20;fill-rule:nonzero" />
+  </g>
+</svg>

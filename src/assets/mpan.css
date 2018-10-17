@@ -1,0 +1,27 @@
+#periscope {
+    width: 100%;
+}
+
+.pano {
+    height:250px;
+}
+
+.pano_container {
+    width: calc(50% - 128px);;
+    float: left;
+}
+
+.control {
+    width:250px;
+    height:250px;
+    float: left;
+}
+
+#map_panel {
+    width: 100%;
+    height: 100%;
+}
+
+.hidden {
+    display:none;
+}
