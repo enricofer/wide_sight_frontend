@@ -69,6 +69,9 @@ export default {
      this.backend_link = this.parent_backend+"/panoramas/"+this.parent_initialPano+"/?apikey="+this.parent_apikey
 
     console.log('CREATED raggiunto')
+
+
+    this.$parent.$on('MapPanelClick', this.load_pano)
     //this.id = this._uid
     let component = this
     // this.sample_point = null
@@ -288,47 +291,51 @@ export default {
      },
 
      draw_reference: function() {
-       let control_geometry = new THREE.CircleGeometry( 2, 8 );
-       let control_material = new THREE.MeshBasicMaterial({
-           color: 'black',
-           side: THREE.DoubleSide,
-       });
-
-
-
-       const control_location_n = new THREE.Mesh(control_geometry, control_material);
-       control_location_n.rotation.x = -Math.PI / 2;
-       control_location_n.position.set(0,-2, 10);
-       this.scene.add(control_location_n)
-
-       control_material.color.setHex( 0x000000 );
-       const control_location_s = new THREE.Mesh(
-           new THREE.CircleGeometry( 2, 8 ),
-           new THREE.MeshBasicMaterial({color: 'white', side: THREE.DoubleSide})
+       const control_location_270_geometry = new THREE.Geometry()
+       control_location_270_geometry.vertices.push (
+         new THREE.Vector3( 0, -2, 0 ),
+       	 new THREE.Vector3(  0, -2, -1000 )
+       )
+       const control_location_270 = new THREE.Line(
+           control_location_270_geometry,
+           new THREE.LineBasicMaterial({color: 'red', linewidth:4})
        );
-       control_location_s.rotation.x = -Math.PI / 2;
-       control_location_s.position.set(0, -2, -10);
-       this.scene.add(control_location_s)
+       this.scene.add(control_location_270)
 
-       control_material.color.setHex( 0xff0000 );
-       const control_location_w = new THREE.Mesh(
-           new THREE.CircleGeometry( 2, 8 ),
-           new THREE.MeshBasicMaterial({color: 'green', side: THREE.DoubleSide})
+       const control_location_90_geometry = new THREE.Geometry()
+       control_location_90_geometry.vertices.push (
+         new THREE.Vector3( 0, -2, 0 ),
+       	 new THREE.Vector3(  0, -2, 1000 )
+       )
+       const control_location_90 = new THREE.Line(
+           control_location_90_geometry,
+           new THREE.LineBasicMaterial({color: 'green', linewidth:4})
        );
-       control_location_w.rotation.x = -Math.PI / 2;
-       control_location_w.position.set(10, -2, 0);
-       this.scene.add(control_location_w)
+       this.scene.add(control_location_90)
 
-       control_material.color.setHex( 0x0000ff );
-       const control_location_e = new THREE.Mesh(
-           new THREE.CircleGeometry( 2, 8 ),
-           new THREE.MeshBasicMaterial({color: 'red', side: THREE.DoubleSide})
+       const control_location_180_geometry = new THREE.Geometry()
+       control_location_180_geometry.vertices.push (
+         new THREE.Vector3( 0, -2, 0 ),
+       	 new THREE.Vector3(  -1000, -2, 0 )
+       )
+       const control_location_180 = new THREE.Line(
+           control_location_180_geometry,
+           new THREE.LineBasicMaterial({color: 'cyan', linewidth:4})
        );
-       control_location_e.rotation.x = -Math.PI / 2;
-       control_location_e.position.set(-10,-2,0);
-       this.scene.add(control_location_e)
+       this.scene.add(control_location_180)
 
-       console.log("draw_reference",control_location_n,control_location_s,control_location_w,control_location_e);
+       const control_location_0_geometry = new THREE.Geometry()
+       control_location_0_geometry.vertices.push (
+         new THREE.Vector3( 0, -2, 0 ),
+       	 new THREE.Vector3(  1000, -2, 0 )
+       )
+       const control_location_0 = new THREE.Line(
+           control_location_0_geometry,
+           new THREE.LineBasicMaterial({color: 'blue', linewidth:4})
+       );
+       this.scene.add(control_location_0)
+
+       console.log("draw_reference",control_location_270,control_location_90,control_location_0,control_location_180);
      },
 
      onDocumentClick: function(event) {

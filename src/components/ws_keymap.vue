@@ -70,6 +70,18 @@ export default {
         component.updateContext()
     })
 
+    this.map_panel.on('singleclick', function(evt) {
+        let sample = component.map_panel.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
+            //you can add a condition on layer to restrict the listener
+            return [layer, feature];
+            });
+        // console.log(sample,sample[1].getId())
+        if (sample && sample[0] === component.other_panos_layer) {
+            console.log(sample[1].getId())
+            component.$parent.$emit('MapPanelClick',sample[1].getId())
+        }
+    });
+
     // this.place_pano(11,45,345,77889)
   },
 
@@ -131,7 +143,7 @@ export default {
               anchor: [0.5, 0.5],
               anchorXUnits: 'fraction',
               anchorYUnits: 'fraction',
-              src: require('../assets/sprites/point4.png')
+              src: require('../assets/viewpoints_dot.png')
             }))
       })
     })
@@ -179,8 +191,8 @@ export default {
             // console.log(rot, rot * Math.PI / 180)
             this.map_panel.changed();
         },
-    
-    
+
+
     cursor_pano: function (head, distance) {
             const y1 = this.pano.y;
             const x1 = this.pano.x;
@@ -219,7 +231,7 @@ export default {
                 format: new GeoJSON()
             })
             this.other_panos_layer.setSource(this.other_panos_source)
-        }   
+        }
 
     }
 }
