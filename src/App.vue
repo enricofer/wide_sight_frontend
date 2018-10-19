@@ -42,7 +42,15 @@ export default {
     'mode',
   ],
 
+  created: function() {
+    if (this.backendEndpoint == undefined) {
+      console.log ('ENDPOINT CORRETTO')
+      this.backendEndpoint = window.location.protocol+"//"+window.location.hostname+':'+window.location.port
+    }
+  },
+
   mounted: function() {
+    console.log('APP MOUNTED')
   },
 
   data: function () {
@@ -61,6 +69,7 @@ export default {
       var context = this
       var promiseObj = new Promise(function(resolve, reject){
          var xhr = new XMLHttpRequest();
+         console.log('ENDPOINT',context.backendEndpoint)
          xhr.open('GET', context.backendEndpoint + "/panoramas/" + pano_key + "/?apikey=" + context.backendApikey, true);
          xhr.send();
          xhr.onreadystatechange = function(){
