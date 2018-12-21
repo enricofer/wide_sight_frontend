@@ -1,7 +1,9 @@
 <template>
     <div id="widesight">
-      <viewer></viewer>
+      <infopanel></infopanel>
       <keymap></keymap>
+      <viewer></viewer>
+      <tag></tag>
     </div>
 </template>
 
@@ -22,17 +24,20 @@
 <script>
 /* eslint-disable */
 /*  <router-view/> */
-import viewer from '@/components/ws_viewer'
+import infopanel from '@/components/ws_infopanel'
 import keymap from '@/components/ws_keymap'
+import viewer from '@/components/ws_viewer'
+import tag from '@/components/ws_tag'
 // import infopanel from '@/components/ws_infopanel'
 
 export default {
   name: 'widesight',
 
   components: {
-    viewer,
+    infopanel,
     keymap,
-    // infopanel
+    viewer,
+    tag,
   },
 
   props: [
@@ -59,6 +64,7 @@ export default {
       backendApikey: this.apikey, //'375368dfd01b9bd9d26e2284ce18398adbd07e93',
       initialPano: this.panokey,
       operating_mode: this.mode,
+      current_pano: undefined,
       // lat: 11,
       // lon: 45,
     }

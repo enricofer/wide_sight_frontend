@@ -187,6 +187,7 @@ export default {
      pano_loaded: function(panorama_data) {
             this.loading = false;
             this.panorama_data = panorama_data
+            this.$parent.current_pano = panorama_data
             const component = this
             const texture_loader = new THREE.TextureLoader()
             texture_loader.load(
@@ -249,17 +250,35 @@ export default {
         const filters = format("&dist=200&point=%%,%%",this.pano_lon,this.pano_lat)
         this.$parent.getPanoramas(filters).then(this.contextLoaded);
         this.draw_reference()
-
-        this.$el.addEventListener('mousedown', this.onDocumentMouseDown, false);
-        this.$el.addEventListener('mousemove', this.onDocumentMouseMove, false);
-        this.$el.addEventListener('mouseup', this.onDocumentMouseUp, false);
-        this.$el.addEventListener('mouseout', this.onDocumentMouseUp, false);
-        this.$el.addEventListener('wheel', this.onDocumentMouseWheel, false);
-        this.$el.addEventListener('dblclick', this.onDocumentDblclick, false);
-        this.$el.addEventListener('click', this.onDocumentClick, false);
+        this.enableNavigation()
         this.render()
-        this.$parent.$emit('PanoramaUpdated',this.pano_lon, this.pano_lat, this.utm_x, this.utm_y, this.utm_code)
+        this.$parent.$emit('PanoramaUpdated',this.pano_key,this.pano_lon, this.pano_lat, this.utm_x, this.utm_y, this.utm_code)
         this.$parent.$emit('ViewChanged',this.pano_track)
+
+        this.$parent.$on('navigationEnabled', this.enableNavigation)
+        this.$parent.$on('navigationDisabled', this.disableNavigation)
+     },
+
+     enableNavigation: function() {
+       this.$el.addEventListener('mousedown', this.onDocumentMouseDown, false);
+       this.$el.addEventListener('mousemove', this.onDocumentMouseMove, false);
+       this.$el.addEventListener('mouseup', this.onDocumentMouseUp, false);
+       this.$el.addEventListener('mouseout', this.onDocumentMouseUp, false);
+       this.$el.addEventListener('wheel', this.onDocumentMouseWheel, false);
+       this.$el.addEventListener('dblclick', this.onDocumentDblclick, false);
+       this.$el.addEventListener('click', this.onDocumentClick, false);
+       this.showCursor(true)
+     },
+
+     disableNavigation: function() {
+       this.$el.removeEventListener('mousedown', this.onDocumentMouseDown, false);
+       this.$el.removeEventListener('mousemove', this.onDocumentMouseMove, false);
+       this.$el.removeEventListener('mouseup', this.onDocumentMouseUp, false);
+       this.$el.removeEventListener('mouseout', this.onDocumentMouseUp, false);
+       this.$el.removeEventListener('wheel', this.onDocumentMouseWheel, false);
+       this.$el.removeEventListener('dblclick', this.onDocumentDblclick, false);
+       this.$el.removeEventListener('click', this.onDocumentClick, false);
+       this.showCursor(false)
      },
 
      contextLoaded: function(context_data) {
@@ -448,7 +467,14 @@ export default {
        this.camera.target.z = 500 * Math.sin(phi) * Math.sin(theta);
        this.camera.lookAt(this.camera.target);
        this.renderer.render(this.scene, this.camera);
-     }
+     },
+
+     showCursor: function (isVisible) {
+         this.location.traverse ( function (child) {
+            child.visible = isVisible;
+         });
+     },
+
   },
 
   events: {

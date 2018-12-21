@@ -25,17 +25,32 @@
 
     </style>
   </head>
-  <body>
+  <body onload="connectEvents()">
     <div id="ws1">
     <wide-sight
-      backend="http://127.0.0.1:8000"
+      backend="https://beato.duckdns.org:8443" 
       apikey="375368dfd01b9bd9d26e2284ce18398adbd07e93"
-      panokey="0329a9dd-6c57-4af0-a347-ba1133a6094c">
+      panokey="8b937f04-4678-45d4-aaf8-504dcbf34608">
     </wide-sight>
+    <!-- 
+      backend=http://172.25.193.167:8989 
+      apikey="375368dfd01b9bd9d26e2284ce18398adbd07e93"
+      panokey="0155d929-c691-4757-a184-3ecc26ed4d1d">
+    -->
     </div>
     <!-- built files will be auto injected -->
     <script>
-      
+      function connectEvents(){
+        const ws_el = document.getElementsByTagName("wide-sight")[0]
+        console.log("WS",ws_el)
+        ws_el.on('ViewChanged', function(payload){
+          console.log('PAYLOAD',payload)
+        })
+        ws_el.on('click', function(ev){
+          console.log('CLICK',ev)
+        })
+      }
+
     </script>
   </body>
 </html>
