@@ -214,7 +214,7 @@ export default {
         },
 
     updateLocation: function (pano_key, lon, lat, utm_x, utm_y, utm_code) {
-            console.log("updateLocation: " + this.$parent.pano_key)
+            console.log("VIEWUPDATE", this.$parent.pano_key)
             //this.utm_zone = utm_zone;
             //this.proj_def = proj_def;
             this.pano.lon = lon;
@@ -233,7 +233,7 @@ export default {
 
     rotate_pano: function (rot) {
             this.icon.set('rotation', rot * Math.PI / 180);
-            // console.log(rot, rot * Math.PI / 180)
+            console.log("VIEWCHANGED",rot, rot * Math.PI / 180)
             this.map_panel.changed();
         },
 

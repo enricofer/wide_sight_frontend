@@ -1,13 +1,35 @@
 <template>
-    <div id="container"></div>
+    <div id="container">
+    <div id="labels"></div>
+  </div>
 </template>
 
-<style scoped>
+<style>
+
 #container {
   width: 100%;
   height: 100%;
   z-index: 1;
 }
+
+#labels {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.overlabel {
+  font-family: arial ;
+  color: white;
+  font-size: 10px;
+  z-index: 100;
+  left: -100px;
+  top: -100px;
+  -webkit-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}
+
 </style>
 
 <script>
@@ -41,6 +63,8 @@ export default {
       mesh: null,
       renderer: null,
       grid_mesh: null,
+      tagGeom:null,
+      tagObject:null,
 
       isUserInteracting: false,
       lon: null,
@@ -54,11 +78,25 @@ export default {
       parent_backend: null,
       parent_apikey: null,
       backend_link: null,
+
+      options: [
+                    {
+                        name: 'Duplicate',
+                        slug: 'duplicate'
+                    },
+                    {
+                        name: 'Edit',
+                        slug: 'edit'
+                    },
+                    {
+                        name: 'Delete',
+                        slug: 'delete'
+                    }
+                ],
     }
   },
 
   mounted: function () {
-    console.log('MOUNTED raggiunto:' + this.$el.id)
     this.load_pano(this.$parent.initialPano)
   },
 
@@ -68,15 +106,14 @@ export default {
      this.parent_apikey = this.$parent.apikey
      this.backend_link = this.parent_backend+"/panoramas/"+this.parent_initialPano+"/?apikey="+this.parent_apikey
 
-    console.log('CREATED raggiunto')
-
+    this.material = undefined
 
     this.$parent.$on('MapPanelClick', this.load_pano)
     //this.id = this._uid
     let component = this
     // this.sample_point = null
     this.point1_texture = new THREE.TextureLoader()
-    console.log(require('../assets/marker.png'))
+    require('../assets/marker.png')
     this.point1_texture.load(
         require('../assets/sprites/point8.png'),
         function (texture) {
@@ -132,6 +169,11 @@ export default {
     // this.location.rotation.x = -Math.PI / 2;
     // this.location.position.set(1000, 1000, 1000);
 
+    this.tagMaterial = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 4 } );
+    this.loadedtagsMaterial = new THREE.LineBasicMaterial( { color: 0xff00ff, linewidth: 4 } );
+    this.tagObject = new THREE.Line( this.tagGeom,  this.tagMaterial );
+
+
     const plane_geometry = new THREE.PlaneGeometry( 1000, 1000, 100, 100 );
     const plane_material = new THREE.MeshBasicMaterial({
         color: 0xfff00f,
@@ -159,10 +201,8 @@ export default {
        this.scene = new THREE.Scene();
        this.geometry = new THREE.SphereBufferGeometry(500, 50, 25);
        this.geometry.scale(-1, 1, 1);
-       console.log('assign')
 
        this.loading = true;
-       console.log(this.$parent.$options.methods)
        this.$parent.getPanoramaDetails(pano_key).then(this.pano_loaded);
 
        /*
@@ -213,14 +253,20 @@ export default {
                     aggregate + chunk + (args[i] || ""), "");
         }
 
+        if (this.material) {
+            this.material.dispose()
+        }
+
         this.material = new THREE.MeshBasicMaterial({
             map: mapping,
             side: THREE.DoubleSide
         });
         this.mesh = new THREE.Mesh(this.geometry, this.material);
         this.mesh.rotation.y = Math.PI;
-
         this.scene.add(this.mesh, this.sample_point, this.plane_surf, this.location); //
+
+        this.panoTagsGroup = new THREE.Group();
+        this.scene.add(this.panoTagsGroup);
 
         this.grid_geometry = new THREE.SphereBufferGeometry(450, 40, 20);
         this.grid_material = new THREE.MeshBasicMaterial({
@@ -232,11 +278,12 @@ export default {
         this.grid_mesh = new THREE.Mesh(this.grid_geometry, this.grid_material);
         this.scene.add(this.grid_mesh);
         if (this.renderer == undefined) {
-            this.renderer = new THREE.WebGLRenderer();
+            this.renderer = new THREE.WebGLRenderer(); //SoftwareRenderer();
             this.renderer.setPixelRatio(window.devicePixelRatio);
             this.renderer.setSize(this.$el.clientWidth, this.$el.clientHeight);
             this.$el.appendChild(this.renderer.domElement)
         }
+
 
         this.pano_key = this.panorama_data["id"]
         this.pano_lat = this.panorama_data["lat"]
@@ -247,16 +294,29 @@ export default {
         this.utm_x = this.panorama_data["utm_x"]
         this.utm_y = this.panorama_data["utm_y"]
 
+        if (this.lat && this.lon) {
+          console.log("EMIT to keymap")
+          this.render();
+          this.emitViewChanged();
+        }
+
         const filters = format("&dist=200&point=%%,%%",this.pano_lon,this.pano_lat)
         this.$parent.getPanoramas(filters).then(this.contextLoaded);
+
+        this.restoreTags();
         this.draw_reference()
         this.enableNavigation()
         this.render()
+
         this.$parent.$emit('PanoramaUpdated',this.pano_key,this.pano_lon, this.pano_lat, this.utm_x, this.utm_y, this.utm_code)
-        this.$parent.$emit('ViewChanged',this.pano_track)
 
         this.$parent.$on('navigationEnabled', this.enableNavigation)
         this.$parent.$on('navigationDisabled', this.disableNavigation)
+
+        this.$parent.$on('taggingEnabled', this.enableTagging)
+        this.$parent.$on('taggingDisabled', this.disableTagging)
+
+        this.$parent.$on('tag_deleted', this.restoreTags)
      },
 
      enableNavigation: function() {
@@ -281,8 +341,21 @@ export default {
        this.showCursor(false)
      },
 
+     enableTagging: function() {
+       this.$el.addEventListener('click', this.onTagClick, false);
+       this.$el.addEventListener('dblclick', this.onTagDblClick, false);
+       this.$el.addEventListener('mousemove', this.onTagMouseMove, false);
+       this.taggingInit();
+     },
+
+     disableTagging: function() {
+       this.$el.removeEventListener('click', this.onTagClick, false);
+       this.$el.removeEventListener('dblclick', this.onTagDblClick, false);
+       this.$el.removeEventListener('mousemove', this.onTagMouseMove, false);
+       this.taggingInit();
+     },
+
      contextLoaded: function(context_data) {
-        console.log("context_data viewer: ", context_data["results"])
         const other_panos_material = new THREE.MeshBasicMaterial({
             color: 0xf0ff20,
             //wireframe: true,
@@ -305,7 +378,6 @@ export default {
             this.context_group.add(op_location)
         }
         this.context_group.rotation.y = Math.PI * this.pano_track / 180; // 180:PI=rot:x
-        console.log("ROTATION", this.pano_track, Math.PI * this.pano_track / 180)
         this.scene.add(this.context_group)
      },
 
@@ -364,8 +436,10 @@ export default {
        this.raycaster.setFromCamera(this.mouse, this.camera);
        const intersect = this.raycaster.intersectObjects([this.context_group],true);
        console.log(intersect[0]);
-       console.log(intersect[0].object.pano_key);
-       this.load_pano(intersect[0].object.pano_key)
+       if (intersect[0]) {
+           console.log(intersect[0].object.pano_key);
+           this.load_pano(intersect[0].object.pano_key)
+       }
      },
 
      onDocumentDblclick: function(event) {
@@ -402,23 +476,26 @@ export default {
        this.onMouseDownLat = this.lat;
      },
 
+     emitViewChanged: function () {
+         const center_view = new THREE.Vector2();
+         center_view.x = 0;
+         center_view.y = 0
+         this.raycaster.setFromCamera(center_view, this.camera);
+         const intersect = this.raycaster.intersectObject(this.grid_mesh);
+         let rotation = -(360 * intersect[0].uv.x - this.pano_track);
+         if (rotation < 0) {
+             rotation = 360 + rotation
+         }
+         rotation = rotation - 180
+         this.$parent.$emit('ViewChanged',rotation)
+     },
+
      onDocumentMouseMove: function (event) {
        if (this.isUserInteracting === true) {
            this.lon = (this.onMouseDownMouseX - event.clientX) * 0.1 + this.onMouseDownLon;
            this.lat = (event.clientY - this.onMouseDownMouseY) * 0.1 + this.onMouseDownLat;
-           const center_view = new THREE.Vector2();
-           center_view.x = 0;
-           center_view.y = 0
-           this.raycaster.setFromCamera(center_view, this.camera);
-           const intersect = this.raycaster.intersectObject(this.grid_mesh);
-           let rotation = -(360 * intersect[0].uv.x - this.pano_track);
-           if (rotation < 0) {
-               rotation = 360 + rotation
-           }
-           rotation = rotation - 180
-           // map_panel.rotate_pano(container_suff, rotation);
-           console.log("rotation",rotation,intersect[0].uv.x);
-           this.$parent.$emit('ViewChanged',rotation)
+           this.emitViewChanged();
+           this.refreshLabels();
 
        } else {
            const rect = this.renderer.domElement.getBoundingClientRect();
@@ -475,7 +552,209 @@ export default {
          });
      },
 
+    taggingInit: function() {
+      this.tagShape = undefined;
+      this.scene.remove(this.tagObject);
+    },
+
+    onTagClick: function(event) {
+       console.log("click",event.button)
+       if (event.button == 2) {
+           this.storeTag()
+       } else {
+            console.log("MOUSE",this.mouse)
+            if (this.tagShape){
+                this.tagObject.geometry.dispose();
+                //this.scene.remove(this.tagObject);
+            } else {
+                console.log("false")
+                this.tagShape = [];
+                this.tagGeom = new THREE.Geometry();
+                this.scene.add(this.tagObject);
+                this.lastPoint = undefined;
+                this.startPoint = undefined;
+            }
+            const intersect = this.getEquirectIntObj(event);
+            const clickedPoint = new THREE.Vector3(intersect[0].point.x, intersect[0].point.y, intersect[0].point.z)
+            if (!this.startPoint) {
+              this.startPoint = clickedPoint;
+            }
+            this.tagGeom.vertices.push(clickedPoint);
+            this.tagShape.push([intersect[0].uv.x,intersect[0].uv.y]);
+            console.log("GEOM",intersect[0].point.x, intersect[0].point.y, intersect[0].point.z);
+            const polyGeom = this.tagGeom.clone();
+            polyGeom.vertices.push(this.startPoint);
+            this.tagObject.geometry = polyGeom;
+            this.renderer.render(this.scene, this.camera);
+
+       }
+     },
+
+    onTagMouseMove: function(event) {
+        if (this.tagShape){
+            const intersect = this.getEquirectIntObj(event);
+            const movedPoint = new THREE.Vector3(intersect[0].point.x, intersect[0].point.y, intersect[0].point.z)
+            const polyGeom = this.tagGeom.clone();
+            polyGeom.vertices.push(movedPoint,this.startPoint);
+            this.tagObject.geometry = polyGeom.clone();
+        }
+    },
+
+    onTagDblClick: function(event) {
+        this.storeTag()
+        this.scene.remove(this.tagObject);
+    },
+
+    getEquirectIntObj: function (event) {
+         const rect = this.renderer.domElement.getBoundingClientRect();
+         this.mouse.x = ((event.clientX - rect.left) / this.renderer.domElement.clientWidth) * 2 - 1;
+         this.mouse.y = -((event.clientY - rect.top) / this.renderer.domElement.clientHeight) * 2 + 1;
+         this.raycaster.setFromCamera(this.mouse, this.camera);
+         return this.raycaster.intersectObject(this.grid_mesh);
+    },
+
+    storeTag: function() {
+
+        const update_url = this.parent_backend+"/image_objects/?apikey="+this.parent_apikey;
+        console.log(update_url);
+        const component = this
+
+        $.ajax({
+              type: 'POST',
+              url: update_url,
+              data: {
+                panorama: this.pano_key,
+                type: 1,
+                creator_key: this.parent_apikey,
+                geom_on_panorama: JSON.stringify(this.tagShape),
+
+              },
+              dataType: "application/json",
+              //need to catch 201 http code
+              success: function(resultData) { console.log("OK", resultData); },
+              error: function(errormsg) { 
+                  if (errormsg["status"] == 201) {
+                        component.restoreTags()
+                        const createdKey = JSON.parse(errormsg["responseText"])["id"]
+                        component.$parent.$emit('editTag', createdKey)
+                    } else {
+                        console.log("ERROR", errormsg); 
+                    }
+                  },
+        });
+
+        this.tagShape = undefined
+
+      },
+
+    removeTags: function() {
+      for (var i = this.panoTagsGroup.children.length - 1; i >= 0; i--) {
+          this.panoTagsGroup.remove(this.panoTagsGroup.children[i]);
+      }
+      this.removeLabels()
+    },
+
+    restoreTags: function() {
+
+        const convert2d3d = function (r, x, y) {
+            let lat  = y  * Math.PI - Math.PI / 2;
+            let long = x * 2 * Math.PI - Math.PI;
+
+            return {
+                x: r * Math.cos(lat) * Math.cos(long),
+                y: r * Math.sin(lat),
+                z: - r * Math.cos(lat) * Math.sin(long),
+            }
+        }
+
+        const retrieve_url = this.parent_backend+"/image_objects/?apikey="+this.parent_apikey+"&type=1&panorama="+this.pano_key;
+        console.log(retrieve_url);
+        const component = this
+        $.ajax({
+              type: 'GET',
+              url: retrieve_url,
+              error: function(errormsg) { console.log("ERROR", errormsg);},
+              success: function(resultData) {
+                  component.removeTags();
+                  component.scene.remove(component.panoTagsGroup)
+                  let startVertex;
+                  for (var i=0; i<resultData["results"].length; ++i) {
+                    const item = resultData["results"][i];
+                    const tag_geom = JSON.parse(item["geom_on_panorama"]);
+                    const tagShape = new THREE.Geometry();
+                    for (var v=0; v<tag_geom.length; ++v) {
+                      const vertex = convert2d3d(450, tag_geom[v][0], tag_geom[v][1]);
+                      if (!startVertex) {
+                        startVertex = new THREE.Vector3(vertex.x, vertex.y, vertex.z)
+                      }
+                      tagShape.vertices.push(new THREE.Vector3(vertex.x, vertex.y, vertex.z))
+                    }
+                    tagShape.vertices.push(startVertex);
+                    const newTagObject = new THREE.Line( tagShape,  component.loadedtagsMaterial );
+                    component.panoTagsGroup.add(newTagObject);
+                    component.scene.add(component.panoTagsGroup);
+
+                    newTagObject.label = component.createLabel(item.id)
+
+                    newTagObject.toScreenXY = function () {
+                        this.geometry.computeBoundingBox()
+                        var pos = new THREE.Vector3();
+                        this.geometry.boundingBox.getCenter(pos);
+                        var projScreenMat = new THREE.Matrix4();
+                        projScreenMat.multiplyMatrices(component.camera.projectionMatrix, component.camera.matrixWorldInverse);
+                        var frustum = new THREE.Frustum();
+                        frustum.setFromMatrix(projScreenMat)
+                        if (frustum.containsPoint(pos)) {
+                          pos.applyMatrix4(projScreenMat);
+                          return { x: ( pos.x + 1 ) * component.$el.clientWidth/ 2 + component.$el.offsetLeft,
+                              y: ( - pos.y + 1) * component.$el.clientHeight / 2 + component.$el.offsetTop };
+                        } else {
+                          return { x: -100, y:-100}
+                        }
+                    }
+
+                    newTagObject.refreshLabel = function () {
+                        const screenPosition = this.toScreenXY()
+                        this.label.style.left = screenPosition.x + 'px';
+                        this.label.style.top = screenPosition.y + 'px';
+                    }
+
+                    startVertex = undefined;
+                  }
+
+                  component.refreshLabels()
+              },
+        });
+    },
+
+    createLabel: function (text) {
+      const component = this
+      const textElement = document.createElement( 'div' );
+      textElement.style.position = 'absolute';
+      textElement.classList.add("overlabel");
+      textElement.onclick = function (event) {
+          event.preventDefault()
+          console.log("TAG",text)
+          component.$parent.$emit('editTag', text)
+      }
+      textElement.innerHTML = text;
+      document.getElementById("labels").appendChild(textElement)
+      return textElement
+    },
+
+    removeLabels: function () {
+      $('.overlabel').remove();
+    },
+
+    refreshLabels: function () {
+      for ( var i = 0; i < this.panoTagsGroup.children.length; i ++ ) {
+          const tagObj = this.panoTagsGroup.children[i]
+          tagObj.refreshLabel()
+      }
+    },
+
   },
+
 
   events: {
   }

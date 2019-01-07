@@ -4,6 +4,7 @@
       <keymap></keymap>
       <viewer></viewer>
       <tag></tag>
+      <tagform></tagform>
     </div>
 </template>
 
@@ -28,6 +29,7 @@ import infopanel from '@/components/ws_infopanel'
 import keymap from '@/components/ws_keymap'
 import viewer from '@/components/ws_viewer'
 import tag from '@/components/ws_tag'
+import tagform from '@/components/ws_form'
 // import infopanel from '@/components/ws_infopanel'
 
 export default {
@@ -38,6 +40,7 @@ export default {
     keymap,
     viewer,
     tag,
+    tagform,
   },
 
   props: [

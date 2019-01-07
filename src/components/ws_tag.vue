@@ -59,8 +59,10 @@ export default {
       toggleTagging: function() {
         if (this.taggingEnabled) {
           this.$parent.$emit('navigationDisabled');
+          this.$parent.$emit('taggingEnabled');
         } else {
           this.$parent.$emit('navigationEnabled');
+          this.$parent.$emit('taggingDisabled');
         }
       }
     }
