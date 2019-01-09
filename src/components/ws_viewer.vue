@@ -40,7 +40,6 @@ export default {
   name: 'viewer',
 
   data: function () {
-    console.log('DATA raggiunto')
     return {
       // backend: 'http://172.25.193.167:8989/panoramas/', // 'http://127.0.0.1:8000/panoramas/', 'http://172.25.193.167:8989/panoramas/',
       // apikey: '375368dfd01b9bd9d26e2284ce18398adbd07e93', // '375368dfd01b9bd9d26e2284ce18398adbd07e93',
@@ -54,6 +53,7 @@ export default {
       utm_x: null,
       utm_y: null,
       look_at: null,
+      height_from_ground: 2,
 
       camera: null,
       scene: null,
@@ -140,12 +140,15 @@ export default {
     this.location_spot1.rotation.x = -Math.PI / 2;
 
     this.location_spot2 = new THREE.Mesh( new THREE.CircleGeometry( 1, 32 ), location_material );
-    this.location_spot2.position.set(0, 0.1, 0);
+    this.location_spot2.position.set(0, 0.01, 0);
     this.location_spot2.rotation.x = -Math.PI / 2;
     const location_line_geometry = new THREE.Geometry();
-    const location_line_material = new THREE.LineBasicMaterial({
+    const location_line_material = new THREE.LineDashedMaterial({
         color: 0xffffff,
         linewidth: 4,
+        scale: 1,
+        dashSize: 2,
+        gapSize: 2,
     });
     location_line_geometry.vertices.push(
     	new THREE.Vector3( 0, 0, 0 ),
@@ -171,6 +174,7 @@ export default {
 
     this.tagMaterial = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 4 } );
     this.loadedtagsMaterial = new THREE.LineBasicMaterial( { color: 0xff00ff, linewidth: 4 } );
+    this.contextMaterial = new THREE.LineBasicMaterial( { color: 0xffff00, linewidth: 2 } );
     this.tagObject = new THREE.Line( this.tagGeom,  this.tagMaterial );
 
 
@@ -185,18 +189,17 @@ export default {
     });
     this.plane_surf = new THREE.Mesh( plane_geometry, plane_material );
     this.plane_surf.rotation.x = -Math.PI / 2;
-    this.plane_surf.position.y = -2;
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
 
-    this.context_group = new THREE.Object3D()
+    this.other_panos_group = new THREE.Object3D()
 
     // window.addEventListener('resize', onWindowResize, false);
   },
 
   methods: {
      load_pano: function(pano_key) {
-       this.camera = new THREE.PerspectiveCamera(75, this.$el.clientWidth / this.$el.clientHeight, 1, 1100);
+       this.camera = new THREE.PerspectiveCamera(50, this.$el.clientWidth / this.$el.clientHeight, 1, 1100);
        this.camera.target = new THREE.Vector3(0, 0, 0);
        this.scene = new THREE.Scene();
        this.geometry = new THREE.SphereBufferGeometry(500, 50, 25);
@@ -268,6 +271,9 @@ export default {
         this.panoTagsGroup = new THREE.Group();
         this.scene.add(this.panoTagsGroup);
 
+        this.contextGroup = new THREE.Group();
+        this.scene.add(this.contextGroup);
+
         this.grid_geometry = new THREE.SphereBufferGeometry(450, 40, 20);
         this.grid_material = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0xff0000),
@@ -293,6 +299,13 @@ export default {
         this.utm_srid = this.panorama_data["utm_srid"]
         this.utm_x = this.panorama_data["utm_x"]
         this.utm_y = this.panorama_data["utm_y"]
+        if (this.panorama_data["height_from_ground"]) {
+            this.height_from_ground = this.panorama_data["height_from_ground"]
+        } else {
+            this.height_from_ground = 2
+        }
+        this.plane_surf.position.y = -this.height_from_ground;
+
 
         if (this.lat && this.lon) {
           console.log("EMIT to keymap")
@@ -301,14 +314,15 @@ export default {
         }
 
         const filters = format("&dist=200&point=%%,%%",this.pano_lon,this.pano_lat)
-        this.$parent.getPanoramas(filters).then(this.contextLoaded);
+        this.$parent.getPanoramas(filters).then(this.otherPanosLoaded);
 
         this.restoreTags();
         this.draw_reference()
         this.enableNavigation()
         this.render()
 
-        this.$parent.$emit('PanoramaUpdated',this.pano_key,this.pano_lon, this.pano_lat, this.utm_x, this.utm_y, this.utm_code)
+        this.$parent.$on('context_redraw', this.redrawContext)
+        this.$parent.$emit('PanoramaUpdated',this.pano_key,this.pano_lon, this.pano_lat, this.utm_x, this.utm_y, this.utm_code, this.utm_zone)
 
         this.$parent.$on('navigationEnabled', this.enableNavigation)
         this.$parent.$on('navigationDisabled', this.disableNavigation)
@@ -355,7 +369,7 @@ export default {
        this.taggingInit();
      },
 
-     contextLoaded: function(context_data) {
+     otherPanosLoaded: function(other_panos_data) {
         const other_panos_material = new THREE.MeshBasicMaterial({
             color: 0xf0ff20,
             //wireframe: true,
@@ -364,28 +378,27 @@ export default {
             opacity: 0.4
         });
 
-        this.scene.remove(this.context_group)
-        this.context_group = new THREE.Object3D()
+        this.scene.remove(this.other_panos_group)
+        this.other_panos_group = new THREE.Object3D()
 
-        for (var i = 0; i < context_data["count"]; i++) { // (var item in context_data["results"])
-            const item = context_data["results"][i]
+        for (var i = 0; i < other_panos_data["count"]; i++) { // (var item in context_data["results"])
+            const item = other_panos_data["results"][i]
             let op_geometry = new THREE.CircleGeometry( 1, 32 );
             let op_location = new THREE.Mesh( op_geometry, other_panos_material );
             op_location.rotation.x = -Math.PI / 2;
-            op_location.position.set(-(this.utm_y - item.utm_y), -2, -(this.utm_x - item.utm_x))
-            console.log(this.utm_x - item.utm_x, this.utm_y - item.utm_y)
+            op_location.position.set(-(this.utm_y - item.utm_y), -this.height_from_ground, -(this.utm_x - item.utm_x))
             op_location.pano_key = item.id
-            this.context_group.add(op_location)
+            this.other_panos_group.add(op_location)
         }
-        this.context_group.rotation.y = Math.PI * this.pano_track / 180; // 180:PI=rot:x
-        this.scene.add(this.context_group)
+        this.other_panos_group.rotation.y = Math.PI * this.pano_track / 180; // 180:PI=rot:x
+        this.scene.add(this.other_panos_group)
      },
 
      draw_reference: function() {
        const control_location_270_geometry = new THREE.Geometry()
        control_location_270_geometry.vertices.push (
-         new THREE.Vector3( 0, -2, 0 ),
-       	 new THREE.Vector3(  0, -2, -1000 )
+         new THREE.Vector3( 0, -this.height_from_ground, 0 ),
+       	 new THREE.Vector3(  0, -this.height_from_ground, -1000 )
        )
        const control_location_270 = new THREE.Line(
            control_location_270_geometry,
@@ -395,8 +408,8 @@ export default {
 
        const control_location_90_geometry = new THREE.Geometry()
        control_location_90_geometry.vertices.push (
-         new THREE.Vector3( 0, -2, 0 ),
-       	 new THREE.Vector3(  0, -2, 1000 )
+         new THREE.Vector3( 0, -this.height_from_ground, 0 ),
+       	 new THREE.Vector3(  0, -this.height_from_ground, 1000 )
        )
        const control_location_90 = new THREE.Line(
            control_location_90_geometry,
@@ -406,8 +419,8 @@ export default {
 
        const control_location_180_geometry = new THREE.Geometry()
        control_location_180_geometry.vertices.push (
-         new THREE.Vector3( 0, -2, 0 ),
-       	 new THREE.Vector3(  -1000, -2, 0 )
+         new THREE.Vector3( 0, -this.height_from_ground, 0 ),
+       	 new THREE.Vector3(  -1000, -this.height_from_ground, 0 )
        )
        const control_location_180 = new THREE.Line(
            control_location_180_geometry,
@@ -417,8 +430,8 @@ export default {
 
        const control_location_0_geometry = new THREE.Geometry()
        control_location_0_geometry.vertices.push (
-         new THREE.Vector3( 0, -2, 0 ),
-       	 new THREE.Vector3(  1000, -2, 0 )
+         new THREE.Vector3( 0, -this.height_from_ground, 0 ),
+       	 new THREE.Vector3(  1000, -this.height_from_ground, 0 )
        )
        const control_location_0 = new THREE.Line(
            control_location_0_geometry,
@@ -434,7 +447,7 @@ export default {
        this.mouse.x = ((event.clientX - rect.left) / this.renderer.domElement.clientWidth) * 2 - 1;
        this.mouse.y = -((event.clientY - rect.top) / this.renderer.domElement.clientHeight) * 2 + 1;
        this.raycaster.setFromCamera(this.mouse, this.camera);
-       const intersect = this.raycaster.intersectObjects([this.context_group],true);
+       const intersect = this.raycaster.intersectObjects([this.other_panos_group],true);
        console.log(intersect[0]);
        if (intersect[0]) {
            console.log(intersect[0].object.pano_key);
@@ -501,7 +514,9 @@ export default {
            const rect = this.renderer.domElement.getBoundingClientRect();
            this.mouse.x = ((event.clientX - rect.left) / this.renderer.domElement.clientWidth) * 2 - 1;
            this.mouse.y = -((event.clientY - rect.top) / this.renderer.domElement.clientHeight) * 2 + 1;
+           console.log(this.mouse.x, this.mouse.y)
            this.raycaster.setFromCamera(this.mouse, this.camera);
+           /*
            const intersect = this.raycaster.intersectObject(this.grid_mesh);
            let lat_mouse = 180 * intersect[0].uv.y - 90;
            let lon_mouse = -(360 * intersect[0].uv.x - this.pano_track);
@@ -510,14 +525,20 @@ export default {
            }
            if (lat_mouse < -2) {
                const abs_lat = -lat_mouse
-               const distance = 473.4301507896*Math.pow(abs_lat, -1.8); // -1.4267930147
+               const distance = 473.4301507896*Math.pow(abs_lat, -1.4); // -1.4267930147
                // console.log("D_",distance,lon_mouse);
                // map_panel.cursor_pano(container_suff, lon_mouse, distance);
                lon_mouse = lon_mouse - 180
-               this.$parent.$emit('PanoCursorChanged',lon_mouse , distance)
+               //this.$parent.$emit('PanoCursorChanged',lon_mouse , distance)
            }
+           */
            const plane_intersect = this.raycaster.intersectObject(this.plane_surf);
            if (plane_intersect[0]) {
+               console.log(plane_intersect[0].point.x,plane_intersect[0].point.y,plane_intersect[0].point.z)
+               const back_rotation = - Math.PI * this.pano_track / 180;
+               const back_x = plane_intersect[0].point.z * Math.cos(back_rotation) - plane_intersect[0].point.x * Math.sin(back_rotation);
+               const back_y = plane_intersect[0].point.x * Math.cos(back_rotation) + plane_intersect[0].point.z * Math.sin(back_rotation);
+               this.$parent.$emit('PanoCursorChanged',back_x , back_y)
                this.location.position.set(plane_intersect[0].point.x, plane_intersect[0].point.y+0.1, plane_intersect[0].point.z);
            }
 
@@ -558,16 +579,13 @@ export default {
     },
 
     onTagClick: function(event) {
-       console.log("click",event.button)
        if (event.button == 2) {
            this.storeTag()
        } else {
-            console.log("MOUSE",this.mouse)
             if (this.tagShape){
                 this.tagObject.geometry.dispose();
                 //this.scene.remove(this.tagObject);
             } else {
-                console.log("false")
                 this.tagShape = [];
                 this.tagGeom = new THREE.Geometry();
                 this.scene.add(this.tagObject);
@@ -616,7 +634,6 @@ export default {
     storeTag: function() {
 
         const update_url = this.parent_backend+"/image_objects/?apikey="+this.parent_apikey;
-        console.log(update_url);
         const component = this
 
         $.ajax({
@@ -632,13 +649,13 @@ export default {
               dataType: "application/json",
               //need to catch 201 http code
               success: function(resultData) { console.log("OK", resultData); },
-              error: function(errormsg) { 
+              error: function(errormsg) {
                   if (errormsg["status"] == 201) {
                         component.restoreTags()
                         const createdKey = JSON.parse(errormsg["responseText"])["id"]
                         component.$parent.$emit('editTag', createdKey)
                     } else {
-                        console.log("ERROR", errormsg); 
+                        console.log("ERROR", errormsg);
                     }
                   },
         });
@@ -668,7 +685,6 @@ export default {
         }
 
         const retrieve_url = this.parent_backend+"/image_objects/?apikey="+this.parent_apikey+"&type=1&panorama="+this.pano_key;
-        console.log(retrieve_url);
         const component = this
         $.ajax({
               type: 'GET',
@@ -752,6 +768,42 @@ export default {
           tagObj.refreshLabel()
       }
     },
+
+    redrawContext: function(context) {
+        console.log("REDRAW CONTEXT")
+
+        //remove contextGroup
+        for (var i = this.contextGroup.children.length - 1; i >= 0; i--) {
+            this.contextGroup.remove(this.contextGroup.children[i]);
+        }
+        this.scene.remove(this.contextGroup)
+
+        for (var i=0; i<context.length; ++i) {
+            const map_feat = context[i];
+            let startVertex;
+            const contextShape = new THREE.Geometry();
+            for (var k=0; k<map_feat["geometry"]["coordinates"][0][0].length; ++k) {
+                const vertex = new THREE.Vector3(
+                    map_feat["geometry"]["coordinates"][0][0][k][1]-this.utm_y,
+                    -this.height_from_ground,
+                    map_feat["geometry"]["coordinates"][0][0][k][0]-this.utm_x,
+                );
+
+                if (!startVertex){
+                    startVertex = vertex
+                }
+                contextShape.vertices.push(vertex)
+            }
+            contextShape.vertices.push(startVertex);
+            const newContextObject = new THREE.Line( contextShape,  this.contextMaterial );
+            this.contextGroup.add(newContextObject);
+        }
+        this.contextGroup.rotation.y = Math.PI * this.pano_track / 180;
+        this.scene.add(this.contextGroup);
+        console.log("contextGroup objs:",this.contextGroup.children.length)
+
+
+    }
 
   },
 

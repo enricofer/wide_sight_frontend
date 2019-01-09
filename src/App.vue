@@ -37,16 +37,17 @@ export default {
 
   components: {
     infopanel,
-    keymap,
     viewer,
     tag,
     tagform,
+    keymap,
   },
 
   props: [
     'backend',
     'apikey',
     'panokey',
+    'overlay',
     'mode',
   ],
 
@@ -66,6 +67,7 @@ export default {
       backendEndpoint: this.backend, //'http://127.0.0.1:8000/',//'http://172.25.193.167:8989/',
       backendApikey: this.apikey, //'375368dfd01b9bd9d26e2284ce18398adbd07e93',
       initialPano: this.panokey,
+      externalOverlay: this.overlay,
       operating_mode: this.mode,
       current_pano: undefined,
       // lat: 11,

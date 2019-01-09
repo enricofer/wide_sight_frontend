@@ -7,14 +7,19 @@ import vueCustomElement from 'vue-custom-element'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { faInfoCircle, faTimesCircle, faMap, faTag } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import Buefy from 'buefy'
+import 'buefy/dist/buefy.css'
+
+window.$ = require('jquery')
+window.JQuery = require('jquery')
 
 library.add(faInfoCircle)
 library.add(faTimesCircle)
 library.add(faTag)
 library.add(faMap)
 
-Vue.component('font-awesome-icon', FontAwesomeIcon)
+Vue.use(Buefy)
 
+Vue.component('font-awesome-icon', FontAwesomeIcon)
 Vue.use(vueCustomElement)
-console.log(widesight)
 Vue.customElement('wide-sight', widesight)

@@ -70,18 +70,28 @@ import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
 import Style from 'ol/style/Style'
 import Icon from 'ol/style/Icon'
+import Stroke from 'ol/style/Stroke'
+import Fill from 'ol/style/Fill'
 import Vector from 'ol/layer/Vector'
 import OlSourceVector from 'ol/source/Vector'
 import OSM from 'ol/source/OSM'
 import {transform} from 'ol/proj.js'
 import Proj4 from 'proj4'
 import GeoJSON from 'ol/format/GeoJSON';
+import Projection from 'ol/proj/Projection';
+import {addProjection} from 'ol/proj.js';
+import {register} from 'ol/proj/proj4.js';
+
+import proj4 from 'proj4'
+
+import * as turf from '@turf/turf'
 
 export default {
   name: 'keymap',
   data: function () {
       return {
         showMapPanel: true,
+        zoom: 17,
       }
   },
 
@@ -135,6 +145,25 @@ export default {
         return st
     }
 
+    this.overlay_layer = new Vector({
+              title: 'Overlay',
+              visible: true,
+              source: new OlSourceVector({
+                 url: this.$parent.overlay,
+                 format: new GeoJSON()
+              }),
+              style: new Style({
+                          stroke: new Stroke({
+                              color: '#ff0000',
+                              width: 1
+                          }),
+                          fill: new Fill({
+                              color: 'rgba(255, 255, 255, 0.3)'
+                          })
+                      })
+
+          })
+
     this.other_panos_source = new OlSourceVector({})
 
     this.other_panos_layer = new Vector({
@@ -168,13 +197,14 @@ export default {
               new Tile({
                   source: new OSM()
               }),
+              this.overlay_layer,
               this.other_panos_layer,
               this.marker_vector,
           ],
           view: new View({
-              projection: 'EPSG:4326',
+              projection: 'EPSG:3857',
               center: [0, 0],
-              zoom: 2
+              zoom: this.zoom
           }),
           //controls: ol.control.defaults().extend([
               //new ol.control.ScaleLine(),
@@ -187,7 +217,6 @@ export default {
       let component = this
 
       this.map_panel.on('moveend', function(e) {
-          console.log('moveend')
           component.updateContext()
       })
 
@@ -198,7 +227,6 @@ export default {
               });
           // console.log(sample,sample[1].getId())
           if (sample && sample[0] === component.other_panos_layer) {
-              console.log(sample[1].getId())
               component.$parent.$emit('MapPanelClick',sample[1].getId())
           }
       });
@@ -213,36 +241,35 @@ export default {
             console.log(utm_code,utm_zone,utm_suffix, this.utm_proj)
         },
 
-    updateLocation: function (pano_key, lon, lat, utm_x, utm_y, utm_code) {
-            console.log("VIEWUPDATE", this.$parent.pano_key)
-            //this.utm_zone = utm_zone;
-            //this.proj_def = proj_def;
+    updateLocation: function (pano_key, lon, lat, utm_x, utm_y, utm_code, utm_zone) {
+            console.log("LOCATION: ", pano_key, lon, lat, utm_x, utm_y, utm_code, utm_zone)
             this.pano.lon = lon;
             this.pano.lat = lat;
             this.pano.x = utm_x;
             this.pano.y = utm_y;
+            this.pano.utm_code = utm_code;
+            this.pano.utm_zone = utm_zone;
             // console.log(utm_code)
             this.set_utm_proj(utm_code)
             this.icon.setGeometry(new Point(transform([lon, lat], 'EPSG:4326', 'EPSG:3857')))
             this.map_panel.setView(new View({
                 projection: 'EPSG:3857',
                 center: transform([lon, lat], 'EPSG:4326', 'EPSG:3857'),
-                zoom: 17
+                zoom: this.zoom
             }))
+            this.exportContext();
         },
 
     rotate_pano: function (rot) {
             this.icon.set('rotation', rot * Math.PI / 180);
-            console.log("VIEWCHANGED",rot, rot * Math.PI / 180)
             this.map_panel.changed();
         },
 
     map_panel_render: function() {
-      console.log('RENDER')
       this.create_map_panel();
     },
 
-    cursor_pano: function (head, distance) {
+    ex_cursor_pano: function (head, distance) {
             const y1 = this.pano.y;
             const x1 = this.pano.x;
             let angle = 360 - head + 90;
@@ -255,6 +282,14 @@ export default {
             this.map_panel.changed();
         },
 
+        cursor_pano: function (dx, dy) {
+                const cursor_x = this.pano.x + dx;
+                const cursor_y = this.pano.y + dy;
+                console.log("DELTA",dx, dy, cursor_x, cursor_y)
+                this.cursor.setGeometry(new Point(Proj4( this.utm_proj, "EPSG:3857", [cursor_x, cursor_y])));
+                this.map_panel.changed();
+            },
+
     updateContext: function () {
 
             function format(fmt, ...args){
@@ -263,7 +298,7 @@ export default {
                     .reduce((aggregate, chunk, i) =>
                         aggregate + chunk + (args[i] || ""), "");
             }
-
+            this.zoom = this.map_panel.getView().getZoom();
             const context_extent = this.map_panel.getView().calculateExtent(this.map_panel.getSize())
             const llc = transform([context_extent[0], context_extent[1]], 'EPSG:3857', 'EPSG:4326')
             const urc = transform([context_extent[2], context_extent[3]], 'EPSG:3857', 'EPSG:4326')
@@ -280,7 +315,45 @@ export default {
                 format: new GeoJSON()
             })
             this.other_panos_layer.setSource(this.other_panos_source)
+        },
+
+    exportContext: function() {
+        var writer = new GeoJSON();
+        const utm_srid = 'EPSG:' + this.pano.utm_code.toString();
+        //const utm_def = "+proj=utm +zone=" + this.pano.utm_zone + " +datum=WGS84 +units=m +no_defs"
+        //const utm_def = "+proj=utm +zone=32N +datum=WGS84 +units=m +no_defs"
+        proj4.defs(utm_srid, this.utm_proj);
+        register(proj4)
+
+        var utm_proj = new Projection({
+            code: utm_srid,
+            extent: [this.pano.x-100000,this.pano.y-100000,this.pano.x+100000,this.pano.y+100000]
+        });
+        addProjection(utm_proj);
+
+        const features = this.overlay_layer.getSource().getFeatures();
+        var tl = proj4(this.utm_proj).forward([this.pano.lon, this.pano.lat])
+        console.log("TL", tl, this.pano, this.utm_proj);
+        var bbox = [tl[0] - 200, tl[1] - 200, tl[0] + 200,tl[1] + 200];
+        var transformed_features = [];
+        for (var i=0; i<features.length; ++i) {
+            const testGeom = features[i].getGeometry().clone()
+            testGeom.transform('EPSG:3857', 'EPSG:4326');
+            const testGeomJson  = JSON.parse(writer.writeGeometry(testGeom));
+            const dist = turf.distance(turf.point([this.pano.lon,this.pano.lat]), turf.centroid(testGeomJson));
+
+            if (dist < 0.05){
+                const contextGeom = features[i].getGeometry().clone()
+                contextGeom.transform('EPSG:3857', utm_srid);
+                const contextFeatJson = JSON.parse(writer.writeFeature(features[i]));
+                const contextGeomJson  = JSON.parse(writer.writeGeometry(contextGeom));
+                contextFeatJson["geometry"] = contextGeomJson
+                transformed_features.push(contextFeatJson)
+            }
         }
+        console.log("transformed_features: ", transformed_features.length)
+        this.$parent.$emit('context_redraw', transformed_features)
+    }
 
     }
 }
