@@ -5,6 +5,7 @@
       <viewer></viewer>
       <tag></tag>
       <tagform></tagform>
+      <optionsform></optionsform>
     </div>
 </template>
 
@@ -30,6 +31,7 @@ import keymap from '@/components/ws_keymap'
 import viewer from '@/components/ws_viewer'
 import tag from '@/components/ws_tag'
 import tagform from '@/components/ws_form'
+import optionsform from '@/components/ws_opts'
 // import infopanel from '@/components/ws_infopanel'
 
 export default {
@@ -41,6 +43,7 @@ export default {
     tag,
     tagform,
     keymap,
+    optionsform,
   },
 
   props: [
@@ -99,12 +102,13 @@ export default {
     return promiseObj;
     },
 
-    getPanoramas: function(filters='') {
+    getItems: function(items,filters='') {
+      console.log("Loading "+items, filters)
       var context = this
       var promiseObj = new Promise(function(resolve, reject){
          var xhr = new XMLHttpRequest();
          // if (as_geojson == true) { as_geojson = '&as_geojson=true' } else { as_geojson = '' }
-         xhr.open('GET', context.backendEndpoint + "/panoramas/?apikey=" + context.backendApikey + filters, true);
+         xhr.open('GET', context.backendEndpoint + "/" + items + "/?apikey=" + context.backendApikey + filters, true);
          xhr.send();
          xhr.onreadystatechange = function(){
          if (xhr.readyState === 4){

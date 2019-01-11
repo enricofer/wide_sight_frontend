@@ -17,7 +17,7 @@
  border: none;
  text-align: left;
  outline: none;
- font-size: 25px;
+ font-size: 20px;
  z-index: 2001;
  position: absolute;
  right:30px;

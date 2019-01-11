@@ -14,6 +14,7 @@
             </a>
         </div>
         <div class="card-content">
+            <!--
             <b-field label="Tag type">
                 <b-select placeholder="Select a tag type">
                   <option v-for="item in opts" :value="item.value">
@@ -21,12 +22,13 @@
                   </option>
                 </b-select>
             </b-field>
+            -->
             <b-field label="Note">
                 <b-input type="textarea" ref="notefield" v-model="note_field"></b-input>
             </b-field>
         </div>
         <footer class="card-footer">
-            <a class="card-footer-item" v-on:click="Tcancel">Cancel</a>
+            <a class="card-footer-item" v-on:click="Tcancel">Close</a>
             <a class="card-footer-item" ></a>
             <a class="card-footer-item" v-on:click="Tdelete">Delete</a>
             <a class="card-footer-item" v-on:click="Tsave">Save</a>
@@ -81,6 +83,7 @@ export default {
 
   created: function () {
     this.$parent.$on('editTag', this.editTag)
+    this.$parent.$on('editSpot', this.editTag)
   },
 
   computed: {
@@ -97,6 +100,7 @@ export default {
               url: component.retrieve_url,
               error: function(errormsg) { console.log("ERROR", errormsg);},
               success: function(resultData) {
+                  component.formData = resultData
                   console.log(resultData)
                   if (resultData["note"]){
                         component.note_field = resultData["note"]
@@ -133,7 +137,14 @@ export default {
               url: component.retrieve_url,
               error: function(errormsg) { console.log("ERROR", errormsg);},
               success: function(resultData) {
-                  component.$parent.$emit('tag_deleted')
+                  switch (component.formData['type']) {
+                      case 1:
+                         component.$parent.$emit('tag_deleted');
+                         break;
+                      case 2:
+                         component.$parent.$emit('spot_deleted');
+                         break;
+                  }
                   component.tagKey = undefined
               }
         })

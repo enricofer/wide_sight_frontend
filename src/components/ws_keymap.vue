@@ -36,7 +36,7 @@
  border: none;
  text-align: left;
  outline: none;
- font-size: 25px;
+ font-size: 20px;
  z-index: 1003;
  position: absolute;
  top:0px;
@@ -104,6 +104,9 @@ export default {
     this.$parent.$on('PanoramaUpdated', this.updateLocation)
     this.$parent.$on('ViewChanged', this.rotate_pano)
     this.$parent.$on('PanoCursorChanged', this.cursor_pano)
+    this.$parent.$on('SpotCreated', this.storeMapSpot)
+    this.$parent.$on('spot_deleted', this.updateContext)
+    this.$parent.$on('update_context', this.exportContext)
 
     this.icon = new Feature({
         geometry: new Point([0, 0]),
@@ -144,6 +147,27 @@ export default {
         });
         return st
     }
+
+    this.spots_source = new OlSourceVector({})
+
+    this.spots_layer = new Vector({
+              title: 'Map Spots',
+              visible: true,
+              projection: 'EPSG:4326',
+              source: new OlSourceVector({
+                    url: this.spots_source,
+                    format: new GeoJSON()
+              }),
+              style: new Style({
+                    image: new Icon( /** @type {olx.style.IconOptions} */ ({
+                    anchor: [0.5, 0.5],
+                    anchorXUnits: 'fraction',
+                    anchorYUnits: 'fraction',
+                    src: require('../assets/sprites/point4.png')
+              }))
+        })
+
+    })
 
     this.overlay_layer = new Vector({
               title: 'Overlay',
@@ -198,8 +222,9 @@ export default {
                   source: new OSM()
               }),
               this.overlay_layer,
+              this.spots_layer,
               this.other_panos_layer,
-              this.marker_vector,
+              this.marker_vector
           ],
           view: new View({
               projection: 'EPSG:3857',
@@ -241,14 +266,15 @@ export default {
             console.log(utm_code,utm_zone,utm_suffix, this.utm_proj)
         },
 
-    updateLocation: function (pano_key, lon, lat, utm_x, utm_y, utm_code, utm_zone) {
-            console.log("LOCATION: ", pano_key, lon, lat, utm_x, utm_y, utm_code, utm_zone)
+    updateLocation: function (pano_key, lon, lat, utm_x, utm_y, utm_code, utm_srid) {
+            console.log("LOCATION: ", pano_key, lon, lat, utm_x, utm_y, utm_code, utm_srid)
+            this.pano.key = pano_key;
             this.pano.lon = lon;
             this.pano.lat = lat;
             this.pano.x = utm_x;
             this.pano.y = utm_y;
             this.pano.utm_code = utm_code;
-            this.pano.utm_zone = utm_zone;
+            this.pano.utm_srid = utm_srid;
             // console.log(utm_code)
             this.set_utm_proj(utm_code)
             this.icon.setGeometry(new Point(transform([lon, lat], 'EPSG:4326', 'EPSG:3857')))
@@ -283,10 +309,9 @@ export default {
         },
 
         cursor_pano: function (dx, dy) {
-                const cursor_x = this.pano.x + dx;
-                const cursor_y = this.pano.y + dy;
-                console.log("DELTA",dx, dy, cursor_x, cursor_y)
-                this.cursor.setGeometry(new Point(Proj4( this.utm_proj, "EPSG:3857", [cursor_x, cursor_y])));
+                this.cursor_x = this.pano.x + dx;
+                this.cursor_y = this.pano.y + dy;
+                this.cursor.setGeometry(new Point(Proj4( this.utm_proj, "EPSG:3857", [this.cursor_x, this.cursor_y])));
                 this.map_panel.changed();
             },
 
@@ -302,19 +327,28 @@ export default {
             const context_extent = this.map_panel.getView().calculateExtent(this.map_panel.getSize())
             const llc = transform([context_extent[0], context_extent[1]], 'EPSG:3857', 'EPSG:4326')
             const urc = transform([context_extent[2], context_extent[3]], 'EPSG:3857', 'EPSG:4326')
-            console.log(llc,urc)
             const filters = format("&as_geojson=true&in_bbox=%%,%%,%%,%%",llc[0],llc[1],urc[0],urc[1])
-            this.$parent.getPanoramas(filters).then(this.contextLoaded);
+            this.$parent.getItems('panoramas',filters).then(this.contextLoaded);
+            this.$parent.getItems('image_objects',filters).then(this.mapSpotsLoaded);
         },
 
     contextLoaded: function(context_details) {
             const features = (new GeoJSON()).readFeatures(context_details,{featureProjection: 'EPSG:3857'})
-            console.log(context_details, features)
             this.other_panos_source = new OlSourceVector({
                 features: features,
                 format: new GeoJSON()
             })
             this.other_panos_layer.setSource(this.other_panos_source)
+        },
+
+    mapSpotsLoaded: function(context_details) {
+            const features = (new GeoJSON()).readFeatures(context_details,{featureProjection: 'EPSG:3857'})
+            console.log("SPOT LOADED:",features)
+            this.spots_source = new OlSourceVector({
+                features: features,
+                format: new GeoJSON()
+            })
+            this.spots_layer.setSource(this.spots_source)
         },
 
     exportContext: function() {
@@ -353,7 +387,42 @@ export default {
         }
         console.log("transformed_features: ", transformed_features.length)
         this.$parent.$emit('context_redraw', transformed_features)
-    }
+    },
+
+    storeMapSpot: function(img_lon,img_lat,spot_x,spot_y,spot_z) {
+        const update_url = this.$parent.backend+"/image_objects/?apikey="+this.$parent.apikey;
+        const spotLocation_wgs84 = proj4(this.utm_proj,"EPSG:4326").forward([this.cursor_x, this.cursor_y]) //treejs axes are rotated!!
+        const component = this
+        $.ajax({
+            type: 'POST',
+            url: update_url,
+            data: {
+                panorama: this.pano.key,
+                type: 2,
+                creator_key: this.$parent.apikey,
+                img_lon: img_lon,
+                img_lat: img_lat,
+                lon: spotLocation_wgs84[0],
+                lat: spotLocation_wgs84[1],
+                utm_x: this.cursor_x,
+                utm_y: this.cursor_y,
+                utm_code: this.pano.utm_code,
+                utm_srid: this.pano.utm_srid,
+            },
+            dataType: "application/json",
+            //need to catch 201 http code
+            success: function(resultData) { console.log("OK", resultData); },
+            error: function(errormsg) {
+                if (errormsg["status"] == 201) {
+                    const createdKey = JSON.parse(errormsg["responseText"])["id"]
+                    component.$parent.$emit('editSpot', createdKey)
+                    component.updateContext();
+                } else {
+                    console.log("ERROR", errormsg);
+                }
+                },
+        });
+    },
 
     }
 }

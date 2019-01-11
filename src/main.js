@@ -5,7 +5,7 @@ import widesight from './App.vue'
 // import router from './router'
 import vueCustomElement from 'vue-custom-element'
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faInfoCircle, faTimesCircle, faMap, faTag } from '@fortawesome/free-solid-svg-icons'
+import { faInfoCircle, faTimesCircle, faMap, faTag, faCog, faEllipsisv } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import Buefy from 'buefy'
 import 'buefy/dist/buefy.css'
@@ -17,6 +17,7 @@ library.add(faInfoCircle)
 library.add(faTimesCircle)
 library.add(faTag)
 library.add(faMap)
+library.add(faCog)
 
 Vue.use(Buefy)
 
