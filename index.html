@@ -6,6 +6,12 @@
     <title>wide_sight_frontend</title>
     <style>
 
+    body {
+      display: flex;
+      height: 100vh;
+      margin: 0;
+    }
+
     #ws1{
       width:1000px;
       height:600px;
@@ -13,9 +19,8 @@
     }
 
     #ws2{
-      width:200px;
-      height:200px;
-      background-color: gray;
+      flex: 1;
+      background: tan;
     }
 
     wide-sight {
@@ -26,17 +31,24 @@
     </style>
   </head>
   <body onload="connectEvents()">
-    <div id="ws1">
+    <div id="ws2">
     <wide-sight
-      backend="https://beato.duckdns.org:8443"
-      apikey="3788e7c9-ace9-4fb6-95b9-db6170b6286f"
-      panokey="6d5e2b70-8517-44a8-acd5-e7c12e00272a"
-      overlay="https://beato.duckdns.org:8443/static/test.geo.json">
+        backend=http://localhost:8000
+        apikey="c9164409-570d-4d4c-9bdc-77dcac3b1f06"
+        panokey="4e193c5f-ddaa-4698-8aa4-e9e3bc35b9ea"
+        overlay="https://beato.duckdns.org:8443/static/test.geo.json">
     </wide-sight>
     <!--
-      backend=http://172.25.193.167:8989
-      apikey="375368dfd01b9bd9d26e2284ce18398adbd07e93"
-      panokey="cb75403f-bccc-4792-9a73-c5a2ace36fec">
+
+        backend="https://beato.duckdns.org:8443"
+        apikey="3788e7c9-ace9-4fb6-95b9-db6170b6286f"
+        panokey="6d5e2b70-8517-44a8-acd5-e7c12e00272a"
+        overlay="https://beato.duckdns.org:8443/static/test.geo.json">
+
+        backend=http://localhost:8000
+        backend=http://172.25.193.167:8989
+        apikey="c9164409-570d-4d4c-9bdc-77dcac3b1f06"
+        panokey="4e193c5f-ddaa-4698-8aa4-e9e3bc35b9ea">
     -->
     </div>
     <!-- built files will be auto injected -->

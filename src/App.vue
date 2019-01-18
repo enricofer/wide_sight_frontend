@@ -59,6 +59,59 @@ export default {
       console.log ('ENDPOINT CORRETTO')
       this.backendEndpoint = window.location.protocol+"//"+window.location.hostname+':'+window.location.port
     }
+
+    const getCookie = function (name) {
+          var cookieValue = null;
+          if (document.cookie && document.cookie !== '') {
+              var cookies = document.cookie.split(';');
+              for (var i = 0; i < cookies.length; i++) {
+                  var cookie = $.trim(cookies[i]);
+                  // Does this cookie string begin with the name we want?
+                  if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                      cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                      break;
+                  }
+              }
+          }
+          return cookieValue;
+      }
+
+      const csrfSafeMethod = function (method) {
+          // these HTTP methods do not require CSRF protection
+          return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+      }
+
+      this.csrftoken = getCookie('csrftoken');
+
+      const component = this
+
+      $.ajaxSetup({
+          beforeSend: function(xhr, settings) {
+              console.log('BEFORE SEND!!', settings.url)
+              xhr.setRequestHeader ("Authorization", "Basic " + btoa(component.user + ":" + component.password));
+              if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                  xhr.setRequestHeader("X-CSRFToken", component.csrftoken);
+              }
+          }
+      });
+
+      const userkeys_url = this.backend + "/userkeys/" //"?username=" + this.user + "&apikey=" + this.backendApikey
+      console.log("userkeys_url",userkeys_url)
+
+      $.ajax({
+            type: 'GET',
+            url: userkeys_url,
+            data:{
+              apikey: this.backendApikey,
+              username: this.user
+            },
+            error: function(errormsg) { console.log("ERROR", errormsg);},
+            success: function(resultData) {
+                console.log(resultData)
+                component.userkey = resultData["results"][0]["key"]
+                console.log('USERKEY',component.userkey)
+            },
+      });
   },
 
   mounted: function() {
@@ -73,6 +126,10 @@ export default {
       externalOverlay: this.overlay,
       operating_mode: this.mode,
       current_pano: undefined,
+      csfrtoken: undefined,
+      user: 'devel',
+      password: 'letmein',
+      userkey: undefined,
       // lat: 11,
       // lon: 45,
     }

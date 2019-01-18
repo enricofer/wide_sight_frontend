@@ -70,6 +70,7 @@ import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
 import Style from 'ol/style/Style'
 import Icon from 'ol/style/Icon'
+import Circle from 'ol/style/Circle'
 import Stroke from 'ol/style/Stroke'
 import Fill from 'ol/style/Fill'
 import Vector from 'ol/layer/Vector'
@@ -96,6 +97,7 @@ export default {
   },
 
   mounted: function () {
+
     this.map_panel_render();
   },
 
@@ -178,11 +180,15 @@ export default {
               }),
               style: new Style({
                           stroke: new Stroke({
-                              color: '#ff0000',
+                              color: '#0073e6',
                               width: 1
                           }),
                           fill: new Fill({
                               color: 'rgba(255, 255, 255, 0.3)'
+                          }),
+                          image: new Circle({
+                                radius: 3,
+                                fill: new Fill({color: '#0073e6'}),
                           })
                       })
 
@@ -399,7 +405,7 @@ export default {
             data: {
                 panorama: this.pano.key,
                 type: 2,
-                creator_key: this.$parent.apikey,
+                creator_key: this.$parent.userkey,
                 img_lon: img_lon,
                 img_lat: img_lat,
                 lon: spotLocation_wgs84[0],

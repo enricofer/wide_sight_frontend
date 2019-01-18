@@ -174,9 +174,12 @@ export default {
 
     this.tagMaterial = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 4 } );
     this.loadedtagsMaterial = new THREE.LineBasicMaterial( { color: 0xff00ff, linewidth: 4 } );
-    this.contextMaterial = new THREE.LineBasicMaterial( { color: 0xffff00, linewidth: 2 } );
     this.tagObject = new THREE.Line( this.tagGeom,  this.tagMaterial );
-
+    this.contextPolyMaterial = new THREE.LineBasicMaterial( { color: 0x009933, linewidth: 1 } );
+    this.contextLineMaterial = new THREE.LineBasicMaterial( { color: 0x009933, linewidth: 3 } );
+    const contextPointMaterial = new THREE.MeshBasicMaterial({color: 0x009933, opacity: 1});
+    this.contextPointGeometry = new THREE.Mesh(new THREE.CircleGeometry( 0.2, 12 ), contextPointMaterial)
+    this.contextPointGeometry.rotation.x = -Math.PI / 2;
 
     const plane_geometry = new THREE.PlaneGeometry( 1000, 1000, 100, 100 );
     const plane_material = new THREE.MeshBasicMaterial({
@@ -294,7 +297,6 @@ export default {
 
 
         if (this.lat && this.lon) {
-          console.log("EMIT to keymap")
           this.render();
           this.emitViewChanged();
         }
@@ -437,7 +439,6 @@ export default {
        );
        this.scene.add(control_location_0)
 
-       console.log("draw_reference",control_location_270,control_location_90,control_location_0,control_location_180);
      },
 
      onDocumentClick: function(event) {
@@ -624,7 +625,7 @@ export default {
               data: {
                 panorama: this.pano_key,
                 type: 1,
-                creator_key: this.parent_apikey,
+                creator_key: this.$parent.userkey,
                 geom_on_panorama: JSON.stringify(this.tagShape),
 
               },
@@ -757,7 +758,6 @@ export default {
                         case 2: //type MAP Spots
                             newTagObject = component.spot_proto.clone()
                             component.spotGroup.add(newTagObject);
-                            console.log(i,item["utm_y"]-component.utm_y, -component.height_from_ground, item["utm_x"]-component.utm_x)
                             newTagObject.position.set(item["utm_y"]-component.utm_y, -component.height_from_ground, item["utm_x"]-component.utm_x)
                             newTagObject.children[0].ws_type = "map spot"
                             newTagObject.children[0].ws_imgObjKey = item.id
@@ -791,7 +791,6 @@ export default {
       textElement.classList.add("overlabel_" + type.toString());
       textElement.onclick = function (event) {
           event.preventDefault()
-          console.log("TAG",text)
           component.$parent.$emit('editTag', text)
       }
       textElement.innerHTML = text;
@@ -822,23 +821,49 @@ export default {
         if (this.options.context){
           for (var i=0; i<context.length; ++i) {
               const map_feat = context[i];
-              let startVertex;
-              const contextShape = new THREE.Geometry();
-              for (var k=0; k<map_feat["geometry"]["coordinates"][0][0].length; ++k) {
-                  const vertex = new THREE.Vector3(
-                      map_feat["geometry"]["coordinates"][0][0][k][1]-this.utm_y,
-                      -this.height_from_ground,
-                      map_feat["geometry"]["coordinates"][0][0][k][0]-this.utm_x,
-                  );
+              if (map_feat["geometry"]["type"]=='MultiPolygon'){
+                let startVertex;
+                const contextShape = new THREE.Geometry();
+                for (var k=0; k<map_feat["geometry"]["coordinates"][0][0].length; ++k) {
+                    const vertex = new THREE.Vector3(
+                        map_feat["geometry"]["coordinates"][0][0][k][1]-this.utm_y,
+                        -this.height_from_ground,
+                        map_feat["geometry"]["coordinates"][0][0][k][0]-this.utm_x,
+                    );
 
-                  if (!startVertex){
-                      startVertex = vertex
-                  }
-                  contextShape.vertices.push(vertex)
+                    if (!startVertex){
+                        startVertex = vertex
+                    }
+                    contextShape.vertices.push(vertex)
+                }
+                contextShape.vertices.push(startVertex);
+                const newContextObject = new THREE.Line( contextShape,  this.contextPolyMaterial );
+                this.contextGroup.add(newContextObject);
               }
-              contextShape.vertices.push(startVertex);
-              const newContextObject = new THREE.Line( contextShape,  this.contextMaterial );
-              this.contextGroup.add(newContextObject);
+              if (map_feat["geometry"]["type"]=='MultiLineString'){
+                const contextShape = new THREE.Geometry();
+                for (var k=0; k<map_feat["geometry"]["coordinates"][0].length; ++k) {
+                    const vertex = new THREE.Vector3(
+                        map_feat["geometry"]["coordinates"][0][k][1]-this.utm_y,
+                        -this.height_from_ground,
+                        map_feat["geometry"]["coordinates"][0][k][0]-this.utm_x,
+                    );
+                    contextShape.vertices.push(vertex)
+                }
+                const newContextObject = new THREE.Line( contextShape,  this.contextLineMaterial );
+                this.contextGroup.add(newContextObject);
+              }
+              if (map_feat["geometry"]["type"]=='MultiPoint'){
+                  for (var k=0; k<map_feat["geometry"]["coordinates"].length; ++k) {
+                    const newContextPoint = this.contextPointGeometry.clone()
+                    newContextPoint.position.set(
+                            map_feat["geometry"]["coordinates"][k][1]-this.utm_y,
+                            -this.height_from_ground,
+                            map_feat["geometry"]["coordinates"][k][0]-this.utm_x,
+                    );
+                    this.contextGroup.add(newContextPoint);
+                  }
+              }
           }
           this.contextGroup.rotation.y = Math.PI * this.pano_track / 180;
           this.scene.add(this.contextGroup);
