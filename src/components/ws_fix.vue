@@ -179,7 +179,6 @@ export default {
         this.height = height;
         this.height_fix_field = height;
         this.reset()
-        this.reset_D()
     },
 
     fix_changed: function() {

@@ -105,9 +105,11 @@ export default {
     )
 
 
-    const horizon_geometry = new THREE.CircleGeometry( 450, 160 );
-    const horizon_material = new THREE.LineBasicMaterial( { color: 'skyblue', linewidth: 1 } );
-    this.horizon = new THREE.LineLoop( horizon_geometry, horizon_material )
+    const horizon_geometry = new THREE.CircleGeometry( 450, 50 );
+    horizon_geometry.vertices.shift()
+    this.horizon_material = new THREE.LineDashedMaterial( { color: 'skyblue', linewidth: 1, scale: 1, dashSize: 5, gapSize: 5} );
+    this.horizon = new THREE.LineLoop( horizon_geometry, this.horizon_material )
+    this.horizon.computeLineDistances()
     this.horizon.rotation.x = -Math.PI / 2;
     this.horizon.rotation.y = Math.PI;
 
@@ -163,12 +165,20 @@ export default {
 
     this.location.position.set(1000, 1000, 1000);
 
-    const other_panos_material = new THREE.MeshBasicMaterial({
+    this.other_panos_material = new THREE.MeshBasicMaterial({
         color: 0xf0ff20,
         //wireframe: true,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.3
+        opacity: 0.4
+
+    });
+
+    this.other_panos_selected_material = new THREE.MeshBasicMaterial({
+        color: 0xf0ff20,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.8
 
     });
 
@@ -197,6 +207,10 @@ export default {
 
     this.other_panos_group = new THREE.Object3D()
 
+    const pano_link_geometry = new THREE.CircleGeometry( 1.5, 60 );
+    const pano_link_material = new THREE.LineBasicMaterial( { color: 'yellow', linewidth: 2 } );
+    this.pano_link = new THREE.Line( pano_link_geometry, pano_link_material )
+    this.pano_link.rotation.x = -Math.PI / 2;
     // window.addEventListener('resize', onWindowResize, false);
   },
 
@@ -405,7 +419,7 @@ export default {
         for (var i = 0; i < other_panos_data["count"]; i++) { // (var item in context_data["results"])
             const item = other_panos_data["results"][i]
             let op_geometry = new THREE.CircleGeometry( 1, 32 );
-            let op_location = new THREE.Mesh( op_geometry, other_panos_material );
+            let op_location = new THREE.Mesh( op_geometry, this.other_panos_material );
             op_location.rotation.x = -Math.PI / 2;
             op_location.position.set(-(this.utm_y - item.utm_y), -this.height_from_ground, -(this.utm_x - item.utm_x))
             op_location.ws_type = 'other pano'
@@ -417,6 +431,37 @@ export default {
      },
 
      draw_reference: function() {
+       const control_location_270_geometry = new THREE.Geometry()
+       control_location_270_geometry.vertices.push (
+         new THREE.Vector3( 0, 0, -450 ),
+       	 new THREE.Vector3(  0, 15, -450 )
+       )
+       this.scene.add(new THREE.Line(control_location_270_geometry,this.horizon_material))
+
+       const control_location_90_geometry = new THREE.Geometry()
+       control_location_90_geometry.vertices.push (
+         new THREE.Vector3( 0, 0, 450 ),
+       	 new THREE.Vector3(  0, 15, 450 )
+       )
+       this.scene.add(new THREE.Line(control_location_90_geometry,this.horizon_material))
+
+       const control_location_180_geometry = new THREE.Geometry()
+       control_location_180_geometry.vertices.push (
+         new THREE.Vector3( -450, 0, 0 ),
+       	 new THREE.Vector3(  -450, 15, 0 )
+       )
+       this.scene.add(new THREE.Line(control_location_180_geometry,this.horizon_material))
+
+       const control_location_0_geometry = new THREE.Geometry()
+       control_location_0_geometry.vertices.push (
+         new THREE.Vector3( 450, 0, 0 ),
+       	 new THREE.Vector3(  450, 30, 0 )
+       )
+       this.scene.add(new THREE.Line(control_location_0_geometry,this.horizon_material))
+
+     },
+
+     ex_draw_reference: function() {
        const control_location_270_geometry = new THREE.Geometry()
        control_location_270_geometry.vertices.push (
          new THREE.Vector3( 0, -this.height_from_ground, 0 ),
@@ -539,6 +584,15 @@ export default {
            this.mouse.x = ((event.clientX - rect.left) / this.renderer.domElement.clientWidth) * 2 - 1;
            this.mouse.y = -((event.clientY - rect.top) / this.renderer.domElement.clientHeight) * 2 + 1;
            this.raycaster.setFromCamera(this.mouse, this.camera);
+           const other_panos_intersect = this.raycaster.intersectObject(this.other_panos_group, true);
+           if (other_panos_intersect[0]) {
+               this.showCursor(false);
+               this.selected_link = other_panos_intersect[0].object;
+               this.selected_link.material = this.other_panos_selected_material;
+           } else {
+              this.showCursor(true);
+              try {this.selected_link.material = this.other_panos_material} catch (e) {}
+           }
            const plane_intersect = this.raycaster.intersectObject(this.plane_surf);
            if (plane_intersect[0]) {
                const back_rotation = - Math.PI * this.pano_track / 180;
