@@ -85,7 +85,7 @@ export default {
 
     this.material = undefined
 
-    this.$parent.$on('MapPanelClick', this.load_pano)
+    this.$parent.$on('triggerPanoChange', this.load_pano)
     //this.id = this._uid
     let component = this
     // this.sample_point = null
@@ -202,6 +202,7 @@ export default {
 
   methods: {
      load_pano: function(pano_key) {
+       console.log("LOADING PANO", pano_key)
        this.camera = new THREE.PerspectiveCamera(50, this.$el.clientWidth / this.$el.clientHeight, 1, 1100);
        this.camera.target = new THREE.Vector3(0, 0, 0);
        this.scene = new THREE.Scene();
@@ -233,13 +234,6 @@ export default {
 
      applyEqimageMapping: function(mapping){
 
-        function format(fmt, ...args){
-            return fmt
-                .split("%%")
-                .reduce((aggregate, chunk, i) =>
-                    aggregate + chunk + (args[i] || ""), "");
-        }
-
         if (this.material) {
             this.material.dispose()
         }
@@ -249,7 +243,6 @@ export default {
             side: THREE.DoubleSide
         });
         this.mesh = new THREE.Mesh(this.geometry, this.material);
-        this.mesh.rotation.y = Math.PI;
         this.scene.add(this.mesh, this.sample_point, this.plane_surf, this.location, this.horizon); //
 
         this.panoTagsGroup = new THREE.Group();
@@ -279,7 +272,7 @@ export default {
             this.$el.appendChild(this.renderer.domElement)
         }
 
-
+        this.pano_note = this.panorama_data["note"]
         this.pano_key = this.panorama_data["id"]
         this.pano_lat = this.panorama_data["lat"]
         this.pano_lon = this.panorama_data["lon"]
@@ -288,6 +281,23 @@ export default {
         this.utm_srid = this.panorama_data["utm_srid"]
         this.utm_x = this.panorama_data["utm_x"]
         this.utm_y = this.panorama_data["utm_y"]
+        this.creator = this.panorama_data["creator_name"]
+        if (this.panorama_data["pitch"]) {
+            this.pitch = this.panorama_data["pitch"]
+        } else {
+            this.pitch = 0
+        }
+        if (this.panorama_data["roll"]) {
+            this.roll = this.panorama_data["roll"]
+        } else {
+            this.roll = 0
+        }
+
+        this.mesh.rotation.y = Math.PI;
+        this.mesh.rotation.z = Math.PI * this.pitch / 180;
+        this.mesh.rotation.x = Math.PI * this.roll / 180;
+
+
         if (this.panorama_data["height_from_ground"]) {
             this.height_from_ground = this.panorama_data["height_from_ground"]
         } else {
@@ -295,15 +305,12 @@ export default {
         }
         this.plane_surf.position.y = -this.height_from_ground;
 
-
         if (this.lat && this.lon) {
           this.render();
           this.emitViewChanged();
         }
 
-        const filters = format("&dist=200&point=%%,%%",this.pano_lon,this.pano_lat)
-        this.$parent.getItems('panoramas',filters).then(this.otherPanosLoaded);
-
+        this.restore_other_panos()
         this.restoreTags();
         this.restoreSpots();
         this.draw_reference()
@@ -311,7 +318,7 @@ export default {
         this.render()
 
         this.$parent.$on('context_redraw', this.redrawContext)
-        this.$parent.$emit('PanoramaUpdated',this.pano_key,this.pano_lon, this.pano_lat, this.utm_x, this.utm_y, this.utm_code, this.utm_srid)
+        this.$parent.$emit('PanoramaUpdated',this.pano_key,this.pano_lon, this.pano_lat, this.utm_x, this.utm_y, this.utm_code, this.utm_srid, this.height_from_ground, this.pano_track, this.roll, this.pitch,  this.pano_note, this.creator)
 
         this.$parent.$on('navigationEnabled', this.enableNavigation)
         this.$parent.$on('navigationDisabled', this.disableNavigation)
@@ -323,6 +330,8 @@ export default {
         this.$parent.$on('spot_deleted', this.restoreSpots)
         this.$parent.$on('editSpot', this.restoreSpots)
         this.$parent.$on('options_changed', this.changeViewOptions)
+        this.$parent.$on('fixPanorama', this.viewFixPanorama)
+
      },
 
      changeViewOptions: function(options) {
@@ -366,6 +375,19 @@ export default {
        this.$el.removeEventListener('dblclick', this.onTagDblClick, false);
        this.$el.removeEventListener('mousemove', this.onTagMouseMove, false);
        this.taggingInit();
+     },
+
+     restore_other_panos: function() {
+
+            function format(fmt, ...args){
+                return fmt
+                    .split("%%")
+                    .reduce((aggregate, chunk, i) =>
+                        aggregate + chunk + (args[i] || ""), "");
+            }
+
+           const filters = format("&dist=200&point=%%,%%",this.pano_lon,this.pano_lat)
+           this.$parent.getItems('panoramas',filters).then(this.otherPanosLoaded);
      },
 
      otherPanosLoaded: function(other_panos_data) {
@@ -869,7 +891,27 @@ export default {
           this.scene.add(this.contextGroup);
           console.log("contextGroup objs:",this.contextGroup.children.length)
         }
-    }
+    },
+
+    viewFixPanorama: function(correction) {
+        console.log("CORRECTION", correction)
+        //let new_x = this.camera.position.x + correction.dy;
+        //let new_y = this.camera.position.y + correction.dh;
+        //let new_z = this.camera.position.z + correction.dx;
+        //this.camera.position.set(new_x, new_y, new_z)
+
+        this.camera.position.set(correction.dy, correction.dh - this.height_from_ground , correction.dx)
+        this.mesh.rotation.x = Math.PI * correction.dr / 180;
+        this.mesh.rotation.z = Math.PI * correction.dp / 180;
+        this.pano_track = correction.dt ;
+
+        this.other_panos_group.rotation.y = Math.PI * this.pano_track / 180;
+        this.spotGroup.rotation.y = Math.PI * this.pano_track / 180;
+        this.panoTagsGroup.rotation.y = Math.PI * this.pano_track / 180;
+        this.contextGroup.rotation.y = Math.PI * this.pano_track / 180;
+    },
+
+
 
   },
 

@@ -6,6 +6,7 @@
       <tag></tag>
       <tagform></tagform>
       <optionsform></optionsform>
+      <fixform></fixform>
     </div>
 </template>
 
@@ -32,6 +33,7 @@ import viewer from '@/components/ws_viewer'
 import tag from '@/components/ws_tag'
 import tagform from '@/components/ws_form'
 import optionsform from '@/components/ws_opts'
+import fixform from '@/components/ws_fix'
 // import infopanel from '@/components/ws_infopanel'
 
 export default {
@@ -44,6 +46,7 @@ export default {
     tagform,
     keymap,
     optionsform,
+    fixform,
   },
 
   props: [
@@ -87,7 +90,6 @@ export default {
 
       $.ajaxSetup({
           beforeSend: function(xhr, settings) {
-              console.log('BEFORE SEND!!', settings.url)
               xhr.setRequestHeader ("Authorization", "Basic " + btoa(component.user + ":" + component.password));
               if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
                   xhr.setRequestHeader("X-CSRFToken", component.csrftoken);
@@ -96,7 +98,6 @@ export default {
       });
 
       const userkeys_url = this.backend + "/userkeys/" //"?username=" + this.user + "&apikey=" + this.backendApikey
-      console.log("userkeys_url",userkeys_url)
 
       $.ajax({
             type: 'GET',
@@ -107,7 +108,6 @@ export default {
             },
             error: function(errormsg) { console.log("ERROR", errormsg);},
             success: function(resultData) {
-                console.log(resultData)
                 component.userkey = resultData["results"][0]["key"]
                 console.log('USERKEY',component.userkey)
             },
@@ -115,7 +115,6 @@ export default {
   },
 
   mounted: function() {
-    console.log('APP MOUNTED')
   },
 
   data: function () {
@@ -140,7 +139,6 @@ export default {
       var context = this
       var promiseObj = new Promise(function(resolve, reject){
          var xhr = new XMLHttpRequest();
-         console.log('ENDPOINT',context.backendEndpoint)
          xhr.open('GET', context.backendEndpoint + "/panoramas/" + pano_key + "/?apikey=" + context.backendApikey, true);
          xhr.send();
          xhr.onreadystatechange = function(){
@@ -160,7 +158,6 @@ export default {
     },
 
     getItems: function(items,filters='') {
-      console.log("Loading "+items, filters)
       var context = this
       var promiseObj = new Promise(function(resolve, reject){
          var xhr = new XMLHttpRequest();

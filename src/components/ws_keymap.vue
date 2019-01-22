@@ -109,6 +109,7 @@ export default {
     this.$parent.$on('SpotCreated', this.storeMapSpot)
     this.$parent.$on('spot_deleted', this.updateContext)
     this.$parent.$on('update_context', this.exportContext)
+    this.$parent.$on('keepPanoramaFix', this.keepFixture)
 
     this.icon = new Feature({
         geometry: new Point([0, 0]),
@@ -258,7 +259,7 @@ export default {
               });
           // console.log(sample,sample[1].getId())
           if (sample && sample[0] === component.other_panos_layer) {
-              component.$parent.$emit('MapPanelClick',sample[1].getId())
+              component.$parent.$emit('triggerPanoChange',sample[1].getId())
           }
       });
     },
@@ -266,14 +267,11 @@ export default {
     set_utm_proj: function (utm_code) {
             let utm_zone = utm_code.slice(0,-1)
             const utm_suffix = utm_code.slice(-1)
-            console.log(utm_code,utm_zone,utm_suffix,"NPQRSTUVZXY".includes(utm_suffix))
             if (!"NPQRSTUVZXY".includes(utm_suffix)) { utm_zone += '+south' }
             this.utm_proj = "+proj=utm +zone=%z +datum=WGS84 +units=m +no_defs".replace("%z", utm_zone) // + ("N" == utm_or ? "" : "+south"));
-            console.log(utm_code,utm_zone,utm_suffix, this.utm_proj)
         },
 
-    updateLocation: function (pano_key, lon, lat, utm_x, utm_y, utm_code, utm_srid) {
-            console.log("LOCATION: ", pano_key, lon, lat, utm_x, utm_y, utm_code, utm_srid)
+    updateLocation: function (pano_key, lon, lat, utm_x, utm_y, utm_code, utm_srid, height, track, roll, pitch,  note, creator) {
             this.pano.key = pano_key;
             this.pano.lon = lon;
             this.pano.lat = lat;
@@ -281,6 +279,7 @@ export default {
             this.pano.y = utm_y;
             this.pano.utm_code = utm_code;
             this.pano.utm_srid = utm_srid;
+            this.pano.track = track;
             // console.log(utm_code)
             this.set_utm_proj(utm_code)
             this.icon.setGeometry(new Point(transform([lon, lat], 'EPSG:4326', 'EPSG:3857')))
@@ -301,25 +300,12 @@ export default {
       this.create_map_panel();
     },
 
-    ex_cursor_pano: function (head, distance) {
-            const y1 = this.pano.y;
-            const x1 = this.pano.x;
-            let angle = 360 - head + 90;
-            if (angle > 360) { angle -= 360}
-            // console.log ("ANGLE",head,angle)
-            let rad_angle = angle*Math.PI/180;
-            const cursor_x = x1 + distance * Math.cos(rad_angle)
-            const cursor_y = y1 + distance * Math.sin(rad_angle)
-            this.cursor.setGeometry(new Point(Proj4( this.utm_proj, "EPSG:3857", [cursor_x, cursor_y])));
+    cursor_pano: function (dx, dy) {
+            this.cursor_x = this.pano.x + dx;
+            this.cursor_y = this.pano.y + dy;
+            this.cursor.setGeometry(new Point(Proj4( this.utm_proj, "EPSG:3857", [this.cursor_x, this.cursor_y])));
             this.map_panel.changed();
         },
-
-        cursor_pano: function (dx, dy) {
-                this.cursor_x = this.pano.x + dx;
-                this.cursor_y = this.pano.y + dy;
-                this.cursor.setGeometry(new Point(Proj4( this.utm_proj, "EPSG:3857", [this.cursor_x, this.cursor_y])));
-                this.map_panel.changed();
-            },
 
     updateContext: function () {
 
@@ -373,7 +359,6 @@ export default {
 
         const features = this.overlay_layer.getSource().getFeatures();
         var tl = proj4(this.utm_proj).forward([this.pano.lon, this.pano.lat])
-        console.log("TL", tl, this.pano, this.utm_proj);
         var bbox = [tl[0] - 200, tl[1] - 200, tl[0] + 200,tl[1] + 200];
         var transformed_features = [];
         for (var i=0; i<features.length; ++i) {
@@ -429,6 +414,40 @@ export default {
                 },
         });
     },
+
+    keepFixture: function(fixture) {
+        const update_url = this.$parent.backend+"/panoramas/" + this.pano.key + "/";
+        const location_fix = proj4(this.utm_proj,"EPSG:4326").forward([this.pano.x + fixture.x, this.pano.y + fixture.y]);
+        const component = this
+        console.log("FIXING", fixture)
+        $.ajax({
+            type: 'PATCH',
+            url: update_url,
+            data: {
+                lon: location_fix[0],
+                lat: location_fix[1],
+                height_correction: fixture.h,
+                pitch: fixture.p,
+                roll: fixture.r,
+                heading: fixture.t,
+                note: fixture.note,
+            },
+            dataType: "application/json",
+            //need to catch 201 http code
+            success: function(resultData) {
+                console.log("keepFixture OK", resultData);
+                component.$parent.$emit('triggerPanoChange',component.pano.key)
+            },
+            error: function(errormsg) {
+                if (errormsg["status"] == 200) {
+                    console.log("keepFixture 200", errormsg);
+                    component.$parent.$emit('triggerPanoChange',component.pano.key)
+                } else {
+                    console.log("ERROR", errormsg);
+                }
+                },
+        });
+    }
 
     }
 }

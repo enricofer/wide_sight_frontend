@@ -7,13 +7,16 @@
       <div class="content" v-if="showInfoPanel">
         <ul>
           <li>KEY: {{key}}</li>
+          <li>CREATOR: {{creator}}</li>
           <li>LAT: {{lat.toFixed(7)}}</li>
           <li>LON: {{lon.toFixed(7)}}</li>
           <li>X: {{x.toFixed(1)}}</li>
           <li>Y: {{y.toFixed(1)}}</li>
+          <li>TRACK: {{track.toFixed(1)}}</li>
           <li>HEAD: {{heading.toFixed(1)}}</li>
           <li>CURSOR_HEAD: {{cursor_head.toFixed(1)}}</li>
           <li>CURSOR_DIST: {{cursor_dist.toFixed(1)}}</li>
+          <li v-if="note">NOTE: {{note}}</li>
         </ul>
       </div>
     </div>
@@ -87,10 +90,13 @@ export default {
       x: 0,
       y: 0,
       utm_code: '',
+      track: 0,
       heading: 0,
       cursor_head: 0,
       cursor_dist: 0,
       showInfoPanel: false,
+      note: undefined,
+      creator: '',
     }
   },
 
@@ -109,13 +115,16 @@ export default {
   },
 
   methods: {
-      updateLocation: function(pano_key, lon, lat, utm_x, utm_y, utm_code){
+      updateLocation: function(pano_key, lon, lat, utm_x, utm_y, utm_code, utm_srid, height, track, roll, pitch,  note, creator){
         this.key = pano_key;
         this.lat = lon;
         this.lon = lat;
         this.x = utm_x;
         this.y = utm_y;
         this.utm_code = utm_code;
+        this.track = track;
+        this.note = note;
+        this.creator = creator;
       },
 
       rotate_pano: function(rot){

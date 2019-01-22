@@ -101,7 +101,6 @@ export default {
               error: function(errormsg) { console.log("ERROR", errormsg);},
               success: function(resultData) {
                   component.formData = resultData
-                  console.log(resultData)
                   if (resultData["note"]){
                         component.note_field = resultData["note"]
                   } else {
