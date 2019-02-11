@@ -10,17 +10,13 @@
       display: flex;
       height: 100vh;
       margin: 0;
+      overflow: auto;
     }
 
-    #ws1{
-      width:1000px;
-      height:600px;
-      background-color: gray;
-    }
-
-    #ws2{
+    #ws{
       flex: 1;
       background: tan;
+      overflow: hidden;
     }
 
     wide-sight {
@@ -30,40 +26,14 @@
 
     </style>
   </head>
-  <body onload="connectEvents()">
-    <div id="ws2">
+  <body>
+    <div id="ws">
     <wide-sight
-        backend=http://localhost:8000
-        apikey="c9164409-570d-4d4c-9bdc-77dcac3b1f06"
-        panokey="4e193c5f-ddaa-4698-8aa4-e9e3bc35b9ea"
-        overlay="https://beato.duckdns.org:8443/static/test.geo.json">
-    </wide-sight>
-    <!--
-
-        backend="https://beato.duckdns.org:8443"
+        backend="http://localhost:8000"
         apikey="3788e7c9-ace9-4fb6-95b9-db6170b6286f"
         panokey="6d5e2b70-8517-44a8-acd5-e7c12e00272a"
-        overlay="https://beato.duckdns.org:8443/static/test.geo.json">
-
-        backend=http://localhost:8000
-        backend=http://172.25.193.167:8989
-        apikey="c9164409-570d-4d4c-9bdc-77dcac3b1f06"
-        panokey="4e193c5f-ddaa-4698-8aa4-e9e3bc35b9ea">
-    -->
+        overlay="http://localhost:8000/static/test.geo.json">
+    </wide-sight>
     </div>
-    <!-- built files will be auto injected -->
-    <script>
-      function connectEvents(){
-        const ws_el = document.getElementsByTagName("wide-sight")[0]
-        console.log("WS",ws_el)
-        ws_el.on('ViewChanged', function(payload){
-          console.log('PAYLOAD',payload)
-        })
-        ws_el.on('click', function(ev){
-          console.log('CLICK',ev)
-        })
-      }
-
-    </script>
   </body>
 </html>
