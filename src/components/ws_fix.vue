@@ -32,7 +32,7 @@
                     <b-field label="Drift along track axis">
                         <b-input type="number" placeholder="0.00" step=".2" ref="yfield" v-model="y_fix_field" @input="fix_changed"></b-input>
                     </b-field>
-                    <b-field label="Drift aside track axis ">
+                    <b-field label="Drift by side track axis ">
                         <b-input type="number" placeholder="0.00" step=".2" ref="xfield" v-model="x_fix_field" @input="fix_changed"></b-input>
                     </b-field>
                     <b-field label="Height from ground">

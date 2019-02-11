@@ -140,6 +140,7 @@ export default {
         this.visible = false
     },
     Tchange: function({ type, target }) {
+        console.log(target,this.options)
         this.$parent.$emit('options_changed', this.options);
     },
   }
