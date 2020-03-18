@@ -28,7 +28,7 @@ The VUEjs app define a new wide-sight html tag as a widesight panorama viewer wi
 
 The viewer needs to be configured with the following parameters:
 
-- backend: a widesight backend server url endpoint
+- backend: a widesight backend server url endpoint: https://github.com/enricofer/wide_sight
 
 - apikey: a valid api key: https://app.swaggerhub.com/apis-docs/enricofer/Widesight/1.0.0#/apikeys/apikeys_list
 
