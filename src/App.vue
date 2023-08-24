@@ -55,6 +55,9 @@ export default {
     'apikey',
     'panokey',
     'overlay',
+    'username',
+    'pwd',
+    'userkey',
     'mode',
   ],
 
@@ -127,9 +130,9 @@ export default {
       operating_mode: this.mode,
       current_pano: undefined,
       csfrtoken: undefined,
-      user: 'devel',
-      password: 'letmein',
-      userkey: undefined,
+      user: this.username || 'admin',
+      password: this.pwd || 'letmein',
+      //userkey: this.userkey,
       // lat: 11,
       // lon: 45,
     }

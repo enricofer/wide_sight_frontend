@@ -48,6 +48,7 @@ export default {
       utm_srid: null,
       utm_x: null,
       utm_y: null,
+      elevation: null,
       look_at: null,
       height_from_ground: 2,
 
@@ -295,6 +296,7 @@ export default {
         this.utm_srid = this.panorama_data["utm_srid"]
         this.utm_x = this.panorama_data["utm_x"]
         this.utm_y = this.panorama_data["utm_y"]
+        this.elevation = this.panorama_data["elevation"]
         this.creator = this.panorama_data["creator_name"]
         if (this.panorama_data["pitch"]) {
             this.pitch = this.panorama_data["pitch"]
@@ -400,7 +402,7 @@ export default {
                         aggregate + chunk + (args[i] || ""), "");
             }
 
-           const filters = format("&dist=200&point=%%,%%",this.pano_lon,this.pano_lat)
+           const filters = format("&dist=100&point=%%,%%",this.pano_lon,this.pano_lat)
            this.$parent.getItems('panoramas',filters).then(this.otherPanosLoaded);
      },
 
@@ -409,19 +411,19 @@ export default {
             color: 0xf0ff20,
             //wireframe: true,
             side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.4
+            transparent: false, //true
+            opacity: 1 //0.4
         });
 
         this.scene.remove(this.other_panos_group)
         this.other_panos_group = new THREE.Object3D()
 
-        for (var i = 0; i < other_panos_data["count"]; i++) { // (var item in context_data["results"])
+        for (var i = 0; i < other_panos_data["results"].length; i++) { // (var item in context_data["results"])
             const item = other_panos_data["results"][i]
             let op_geometry = new THREE.CircleGeometry( 1, 32 );
             let op_location = new THREE.Mesh( op_geometry, this.other_panos_material );
             op_location.rotation.x = -Math.PI / 2;
-            op_location.position.set(-(this.utm_y - item.utm_y), -this.height_from_ground, -(this.utm_x - item.utm_x))
+            op_location.position.set(-(this.utm_y - item.utm_y), - this.height_from_ground, -(this.utm_x - item.utm_x)) //-(this.elevation - item.elevation + this.height_from_ground)
             op_location.ws_type = 'other pano'
             op_location.ws_pano_key = item.id
             this.other_panos_group.add(op_location)
